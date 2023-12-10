@@ -114,9 +114,9 @@ def map_filling(figures, base_way='room_presets'):
             rooms_data.append(cursor.execute(f'SELECT * FROM "{room_type}_{variant}"').fetchall())
         presets[str(room_type)] = rooms_data
 
-    field = [[0 for _ in range(128)] for _ in range(128)]  # creating game_field
+    field = [[0 for _ in range(8 * SIZE_OF_ROOM)] for _ in range(8 * SIZE_OF_ROOM)]  # creating game_field
 
-    for figure in figures:
+    for figure in figures:  # filling field using presets
         coord, room_type = figure
         selected_preset = random.choice(presets[str(room_type)])
         for tile in selected_preset:
@@ -124,4 +124,11 @@ def map_filling(figures, base_way='room_presets'):
             tile_type = tile[1]
             field[int(tile_position[0]) + coord[1] * SIZE_OF_ROOM][int(tile_position[1])
                                                                    + coord[0] * SIZE_OF_ROOM] = tile_type
+    for x in range(8 * SIZE_OF_ROOM):  # creating frame
+        field[0][x] = 1
+        field[8 * SIZE_OF_ROOM - 1][x] = 1
+    for y in range(1, 8 * SIZE_OF_ROOM - 1):
+        field[y][0] = 1
+        field[y][8 * SIZE_OF_ROOM - 1] = 1
+
     return field

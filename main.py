@@ -2,14 +2,9 @@ import pygame
 import generation
 from PIL import Image
 
-successful_generation = False
-while not successful_generation:
-    try:
-        rooms = generation.create_board()
-        field = generation.map_filling(rooms)
-        successful_generation = True
-    except:
-        successful_generation = False
+
+rooms = generation.create_board()
+field = generation.map_filling(rooms)
 
 
 def save_to_img():
