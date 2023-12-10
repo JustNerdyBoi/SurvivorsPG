@@ -1,5 +1,7 @@
 Save your rooms presets as .png files named roomtype_variant.png
 Example: 1_1.png for 1x1 room variant 1
+Place them to rooms folder
+Run image_to_rooms_convertor.py and follow instructions
 
 Use current colors while creating your room:
 Walls - black(0, 0, 0) - 1 blocktype
