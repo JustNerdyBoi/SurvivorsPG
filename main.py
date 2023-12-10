@@ -11,7 +11,8 @@ while not successful_generation:
     except:
         successful_generation = False
 
-def save_to_img
+
+def save_to_img():
     map_preview = Image.new("RGB", (128, 128), (0, 0, 0))
     for x in range(len(field)):
         for y in range(len(field)):
