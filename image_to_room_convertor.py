@@ -42,7 +42,8 @@ while True:
         );""")
         database.commit()
         for tile in tiles:
-            cursor.execute(f"INSERT INTO '{room}'(tile_coord,tile_type) VALUES('{tile[0]}', {tile[1]})")
+            cursor.execute(
+                f"INSERT INTO '{room}'(tile_coord,tile_type) VALUES('{tile[0][0]}, {tile[0][1]}', {tile[1]})")
         database.commit()
         print(f'DONE, {len(tiles)} tiles')
     except:
