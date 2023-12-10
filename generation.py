@@ -122,6 +122,6 @@ def map_filling(figures, base_way='room_presets'):
         for tile in selected_preset:
             tile_position = tile[0].split(', ')
             tile_type = tile[1]
-            field[int(tile_position[1]) + coord[1] * SIZE_OF_ROOM][int(tile_position[0])
+            field[int(tile_position[0]) + coord[1] * SIZE_OF_ROOM][int(tile_position[1])
                                                                    + coord[0] * SIZE_OF_ROOM] = tile_type
     return field
