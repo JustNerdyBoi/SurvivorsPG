@@ -130,6 +130,7 @@ def map_filling(figures, base_way='room_presets'):
 
         loot_positions_del = cursor.execute(
             f'SELECT * FROM "{room_type}_{variant_number}" WHERE tile_type = 3').fetchall()  # removing loot position
+        database.close()
         # from loot position removing list
         for i in range(0, room_type):
             loot_positions_del.remove(random.choice(loot_positions_del))
