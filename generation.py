@@ -1,5 +1,6 @@
 import random
 import sqlite3
+import core
 
 SIZE_OF_ROOM = 16
 
@@ -64,21 +65,21 @@ def create_board():
         while not can_place_figure(x, y, "square2x2_without_1"):
             x, y = random.randint(0, 7), random.randint(0, 7)
         place_figure(x, y, "square2x2_without_1")
-        figures.append(((x, y), 3))
+        figures.append(core.Room((x, y), 3, SIZE_OF_ROOM))
 
         # Размещаем полоску 2x1
         x, y = random.randint(0, 7), random.randint(0, 7)
         while not can_place_figure(x, y, "stripe2x1"):
             x, y = random.randint(0, 7), random.randint(0, 7)
         place_figure(x, y, "stripe2x1")
-        figures.append(((x, y), 2))
+        figures.append(core.Room((x, y), 2, SIZE_OF_ROOM))
 
         # Размещаем квадрат 1x1
         x, y = random.randint(0, 7), random.randint(0, 7)
         while not can_place_figure(x, y, "square1x1"):
             x, y = random.randint(0, 7), random.randint(0, 7)
         place_figure(x, y, "square1x1")
-        figures.append(((x, y), 1))
+        figures.append(core.Room((x, y), 1, SIZE_OF_ROOM))
 
         # Заполняем оставшиеся клетки случайными фигурами
         for i in range(8):
@@ -91,18 +92,18 @@ def create_board():
                     if figure == "square2x2":
                         place_4(i, j)
                     if figure == "square2x2_without_1":
-                        figures.append(((i, j), 3))
+                        figures.append(core.Room((i, j), 3, SIZE_OF_ROOM))
                     if figure == "stripe2x1":
-                        figures.append(((i, j), 2))
+                        figures.append(core.Room((i, j), 2, SIZE_OF_ROOM))
                     if figure == "square1x1":
-                        figures.append(((i, j), 1))
+                        figures.append(core.Room((i, j), 1, SIZE_OF_ROOM))
 
     def place_4(x, y):  # placing some 3+1 instead 4 rooms
         if random.randint(1, 3) <= 2:
-            figures.append(((x, y), 4))
+            figures.append(core.Room((x, y), 4, SIZE_OF_ROOM))
         else:
-            figures.append(((x, y), 1))
-            figures.append(((x, y), 3))
+            figures.append(core.Room((x, y), 1, SIZE_OF_ROOM))
+            figures.append(core.Room((x, y), 3, SIZE_OF_ROOM))
 
     generate_board()
     while any(0 in row for row in board):
@@ -124,30 +125,29 @@ def map_filling(figures, base_way='room_presets'):
     field = [[0 for _ in range(8 * SIZE_OF_ROOM)] for _ in range(8 * SIZE_OF_ROOM)]  # creating game_field
 
     for figure in figures:  # filling field using presets
-        coord, room_type = figure
         variant_number = random.randint(1, 4)
-        selected_preset = presets[str(room_type)][variant_number - 1]
+        selected_preset = presets[str(figure.roomtype)][variant_number - 1]
 
-        loot_positions_del = cursor.execute(
-            f'SELECT * FROM "{room_type}_{variant_number}" WHERE tile_type = 3').fetchall()  # removing loot position
-        database.close()
-        # from loot position removing list
-        for i in range(0, room_type):
-            loot_positions_del.remove(random.choice(loot_positions_del))
+        loot_positions = random.choices(cursor.execute(
+            f'SELECT * FROM "{figure.roomtype}_{variant_number}" WHERE tile_type = 3').fetchall(), k=figure.roomtype)
+
+        for loot_position in loot_positions:
+            figure.lootpositions.append(tuple(map(int, loot_position[0].split(', '))))
 
         for tile in selected_preset:
             tile_position = tile[0].split(', ')
-            if tile not in loot_positions_del:  # filtering loot positions
-                tile_type = tile[1]
-            else:
+            if tile in loot_positions:  # removing loot positions becausee they're in Room object data
                 tile_type = 0
-            field[int(tile_position[0]) + coord[1] * SIZE_OF_ROOM][int(tile_position[1])
-                                                                   + coord[0] * SIZE_OF_ROOM] = tile_type
+            else:
+                tile_type = tile[1]
+            field[int(tile_position[0]) + figure.coords[1]][int(tile_position[1]) + figure.coords[0]] = tile_type
+        print(figure.roomtype, figure.coords, figure.lootpositions)
+
     for x in range(8 * SIZE_OF_ROOM):  # creating frame
         field[0][x] = 1
         field[8 * SIZE_OF_ROOM - 1][x] = 1
     for y in range(1, 8 * SIZE_OF_ROOM - 1):
         field[y][0] = 1
         field[y][8 * SIZE_OF_ROOM - 1] = 1
-
+    database.close()
     return field
