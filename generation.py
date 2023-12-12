@@ -99,7 +99,7 @@ def create_board():
                         figures.append(core.Room((i, j), 1, SIZE_OF_ROOM))
 
     def place_4(x, y):  # placing some 3+1 instead 4 rooms
-        if random.randint(1, 3) <= 2:
+        if random.randint(1, 3) == 1:
             figures.append(core.Room((x, y), 4, SIZE_OF_ROOM))
         else:
             figures.append(core.Room((x, y), 1, SIZE_OF_ROOM))
@@ -132,14 +132,15 @@ def map_filling(figures, base_way='room_presets'):
             f'SELECT * FROM "{figure.roomtype}_{variant_number}" WHERE tile_type = 3').fetchall(), k=figure.roomtype)
 
         for loot_position in loot_positions:
-            figure.lootpositions.append(tuple(map(int, loot_position[0].split(', '))))
+            coords = list(map(int, loot_position[0].split(', ')))
+            figure.lootpositions.append((coords[0] + figure.coords[0], coords[1] + figure.coords[1]))
 
         for tile in selected_preset:
             tile_position = tile[0].split(', ')
-            if tile in loot_positions:  # removing loot positions becausee they're in Room object data
+            tile_type = tile[1]
+            if tile_type == 3:  # removing loot positions becausee they're in Room object data
                 tile_type = 0
-            else:
-                tile_type = tile[1]
+
             field[int(tile_position[0]) + figure.coords[1]][int(tile_position[1]) + figure.coords[0]] = tile_type
         print(figure.roomtype, figure.coords, figure.lootpositions)
 
