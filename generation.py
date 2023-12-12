@@ -59,7 +59,6 @@ def create_board():
         place_figure(x, y, "square2x2")
         place_4(x, y)
 
-
         # Размещаем квадрат 2x2 без 1 клетки
         x, y = random.randint(0, 7), random.randint(0, 7)
         while not can_place_figure(x, y, "square2x2_without_1"):
@@ -99,7 +98,7 @@ def create_board():
                         figures.append(((i, j), 1))
 
     def place_4(x, y):  # placing some 3+1 instead 4 rooms
-        if random.randint(0, 3) <= 1:
+        if random.randint(1, 3) <= 2:
             figures.append(((x, y), 4))
         else:
             figures.append(((x, y), 1))
@@ -128,13 +127,16 @@ def map_filling(figures, base_way='room_presets'):
         coord, room_type = figure
         variant_number = random.randint(1, 4)
         selected_preset = presets[str(room_type)][variant_number - 1]
-        loot_positions_del = cursor.execute(f'SELECT * FROM "{room_type}_{variant_number}" WHERE tile_type = 3').fetchall()
+
+        loot_positions_del = cursor.execute(
+            f'SELECT * FROM "{room_type}_{variant_number}" WHERE tile_type = 3').fetchall()  # removing loot position
+        # from loot position removing list
         for i in range(0, room_type):
             loot_positions_del.remove(random.choice(loot_positions_del))
 
         for tile in selected_preset:
             tile_position = tile[0].split(', ')
-            if tile not in loot_positions_del:
+            if tile not in loot_positions_del:  # filtering loot positions
                 tile_type = tile[1]
             else:
                 tile_type = 0
