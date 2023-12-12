@@ -126,10 +126,18 @@ def map_filling(figures, base_way='room_presets'):
 
     for figure in figures:  # filling field using presets
         coord, room_type = figure
-        selected_preset = random.choice(presets[str(room_type)])
+        variant_number = random.randint(1, 4)
+        selected_preset = presets[str(room_type)][variant_number - 1]
+        loot_positions_del = cursor.execute(f'SELECT * FROM "{room_type}_{variant_number}" WHERE tile_type = 3').fetchall()
+        for i in range(0, room_type):
+            loot_positions_del.remove(random.choice(loot_positions_del))
+
         for tile in selected_preset:
             tile_position = tile[0].split(', ')
-            tile_type = tile[1]
+            if tile not in loot_positions_del:
+                tile_type = tile[1]
+            else:
+                tile_type = 0
             field[int(tile_position[0]) + coord[1] * SIZE_OF_ROOM][int(tile_position[1])
                                                                    + coord[0] * SIZE_OF_ROOM] = tile_type
     for x in range(8 * SIZE_OF_ROOM):  # creating frame
@@ -138,7 +146,5 @@ def map_filling(figures, base_way='room_presets'):
     for y in range(1, 8 * SIZE_OF_ROOM - 1):
         field[y][0] = 1
         field[y][8 * SIZE_OF_ROOM - 1] = 1
-
-
 
     return field
