@@ -57,7 +57,8 @@ def create_board():
         while not can_place_figure(x, y, "square2x2"):
             x, y = random.randint(0, 7), random.randint(0, 7)
         place_figure(x, y, "square2x2")
-        figures.append(((x, y), 4))
+        place_4(x, y)
+
 
         # Размещаем квадрат 2x2 без 1 клетки
         x, y = random.randint(0, 7), random.randint(0, 7)
@@ -89,13 +90,20 @@ def create_board():
                         figure = random.choice(["square2x2", "square2x2_without_1", "stripe2x1", "square1x1"])
                     place_figure(i, j, figure)
                     if figure == "square2x2":
-                        figures.append(((i, j), 4))
+                        place_4(i, j)
                     if figure == "square2x2_without_1":
                         figures.append(((i, j), 3))
                     if figure == "stripe2x1":
                         figures.append(((i, j), 2))
                     if figure == "square1x1":
                         figures.append(((i, j), 1))
+
+    def place_4(x, y):  # placing some 3+1 instead 4 rooms
+        if random.randint(0, 3) <= 1:
+            figures.append(((x, y), 4))
+        else:
+            figures.append(((x, y), 1))
+            figures.append(((x, y), 3))
 
     generate_board()
     while any(0 in row for row in board):
@@ -130,5 +138,7 @@ def map_filling(figures, base_way='room_presets'):
     for y in range(1, 8 * SIZE_OF_ROOM - 1):
         field[y][0] = 1
         field[y][8 * SIZE_OF_ROOM - 1] = 1
+
+
 
     return field
