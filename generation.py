@@ -1,6 +1,7 @@
 import random
 import sqlite3
 import core
+import pygame
 
 SIZE_OF_ROOM = 16
 
@@ -116,11 +117,16 @@ def map_filling(figures, base_way='room_presets'):
     database = sqlite3.connect(base_way)  # connecting to database with rooms presets
     cursor = database.cursor()
     presets = {}
-    for room_type in range(1, 5):  # collecting rooms presets to dictionary
+
+    for room_type in range(1, 5):  # loading rooms presets to dictionary
         rooms_data = []
         for variant in range(1, 5):
             rooms_data.append(cursor.execute(f'SELECT * FROM "{room_type}_{variant}"').fetchall())
         presets[str(room_type)] = rooms_data
+
+    tile_textures = {}  # loading tiles textures
+    for texture in ['0.png', '1.png', '2.png', '4.png']:
+        tile_textures[texture[0]] = core.load_image(texture)
 
     field = [[0 for _ in range(8 * SIZE_OF_ROOM)] for _ in range(8 * SIZE_OF_ROOM)]  # creating game_field
 
@@ -137,18 +143,22 @@ def map_filling(figures, base_way='room_presets'):
 
         for tile in selected_preset:
             tile_position = tile[0].split(', ')
+            tile_coords = (int(tile_position[0]) + figure.coords[1], int(tile_position[1]) + figure.coords[0])
             tile_type = tile[1]
             if tile_type == 3:  # removing loot positions becausee they're in Room object data
                 tile_type = 0
 
-            field[int(tile_position[0]) + figure.coords[1]][int(tile_position[1]) + figure.coords[0]] = tile_type
-        print(figure.roomtype, figure.coords, figure.lootpositions)
+            if (tile_coords[0] == 0 or tile_coords[1] == 0 or
+                    tile_coords[0] == SIZE_OF_ROOM * 8 - 1 or tile_coords[1] == SIZE_OF_ROOM * 8 - 1):
+                tile_type = 1
 
-    for x in range(8 * SIZE_OF_ROOM):  # creating frame
-        field[0][x] = 1
-        field[8 * SIZE_OF_ROOM - 1][x] = 1
-    for y in range(1, 8 * SIZE_OF_ROOM - 1):
-        field[y][0] = 1
-        field[y][8 * SIZE_OF_ROOM - 1] = 1
+            field[tile_coords[0]][tile_coords[1]] = tile_type
+
+            tile_sprite = pygame.sprite.Sprite(figure.spritegroup)
+            tile_sprite.image = tile_textures[str(tile_type)]
+            tile_sprite.rect = tile_sprite.image.get_rect()
+            tile_sprite.rect.x = (int(tile_position[0]) + figure.coords[1]) * SIZE_OF_ROOM
+            tile_sprite.rect.y = (int(tile_position[1]) + figure.coords[0]) * SIZE_OF_ROOM
+
     database.close()
     return field
