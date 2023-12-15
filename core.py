@@ -8,6 +8,7 @@ class Room:
         self.coords = (position[0] * roomsize, position[1] * roomsize)
         self.position = position
         self.roomtype = roomtype
+        self.tilepositions = []
         self.lootpositions = []
         self.spritegroup = pygame.sprite.Group()
 

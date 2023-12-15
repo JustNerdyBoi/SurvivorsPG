@@ -8,6 +8,6 @@ Walls - black(0, 0, 0) - 1 blocktype
 Paths - orange(255, 100, 0) - 2 blocktype
 Inner space - gray(100, 100, 100) - 0 blocktype
 Loot positions - green(0, 255, 0) - 3 blocktype
-Water - blue(0, 0, 255) - 4 blocktype
+Forest(chance of object spawning) - blue(0, 0, 255) - 4 blocktype
 
 Outer contour MUST be solid walls

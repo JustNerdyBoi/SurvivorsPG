@@ -15,7 +15,7 @@ def pixel_type(color):
         return 2
     if color == (0, 255, 0):  # loot pos
         return 3
-    if color == (0, 0, 255):  # water
+    if color == (0, 0, 255):  # forest
         return 4
     else:
         return 'None'
