@@ -2,7 +2,6 @@ import random
 import sqlite3
 import core
 from os import walk
-import pygame
 
 SIZE_OF_ROOM = 16
 SIZE_OF_TEXTURES = 32
@@ -111,8 +110,30 @@ def create_board():
     generate_board()
     while any(0 in row for row in board):
         generate_board()
+    rooms = []
+    for room in figures:
+        neighbour_roomparts = []
+        for room_part in room.covering_squares:
+            variant = (room_part[0] - 1, room_part[1])
+            if variant[0] >= 0 and variant not in room.covering_squares and variant not in neighbour_roomparts:
+                neighbour_roomparts.append(variant)
 
-    return figures
+            variant = (room_part[0] + 1, room_part[1])
+            if variant[0] <= 7 and variant not in room.covering_squares and variant not in neighbour_roomparts:
+                neighbour_roomparts.append(variant)
+
+            variant = (room_part[0], room_part[1] - 1)
+            if variant[1] >= 0 and variant not in room.covering_squares and variant not in neighbour_roomparts:
+                neighbour_roomparts.append(variant)
+
+            variant = (room_part[0], room_part[1] + 1)
+            if variant[1] <= 7 and variant not in room.covering_squares and variant not in neighbour_roomparts:
+                neighbour_roomparts.append(variant)
+        for neighbour_var in figures:
+            if len(list(set(neighbour_roomparts) & set(neighbour_var.covering_squares))) > 0:
+                room.roomneighbours.append(neighbour_var.position)
+        rooms.append(room)
+    return rooms
 
 
 def map_filling(figures, base_way='room_presets'):

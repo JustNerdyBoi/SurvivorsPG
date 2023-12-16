@@ -10,6 +10,21 @@ class Room:
         self.roomtype = roomtype
         self.tilepositions = []
         self.lootpositions = []
+        self.roomneighbours = []
+        self.covering_squares = []
+        if roomtype == 1:
+            self.covering_squares.append(position)
+        elif roomtype in [2, 4]:
+            self.covering_squares.append((position[0] + 1, position[1]))
+            self.covering_squares.append(position)
+            if roomtype == 4:
+                self.covering_squares.append((position[0] + 1, position[1] + 1))
+                self.covering_squares.append((position[0], position[1] + 1))
+        elif roomtype == 3:
+            self.covering_squares.append((position[0], position[1] + 1))
+            self.covering_squares.append((position[0] + 1, position[1] + 1))
+            self.covering_squares.append((position[0] + 1, position[1]))
+
         self.upper_spritegroup = pygame.sprite.Group()
         self.spritegroup = pygame.sprite.Group()
 
