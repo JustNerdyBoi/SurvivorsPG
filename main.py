@@ -8,11 +8,13 @@ rooms = generation.create_board()
 field = generation.map_filling(rooms)
 rooms = generation.apply_sprites(rooms, field)
 
+for x in field:
+    print(*x)
 
 running = True
 move_y = 0
 move_x = 0
-speed = 1
+speed = 15
 min_fps = 1000
 max_fps = 0
 FPSRESET = pygame.USEREVENT + 1
@@ -52,7 +54,6 @@ while running:
     for room in rooms:
         room.spritegroup.draw(screen)
         room.upper_spritegroup.draw(screen)
-
         room.move(move_x * speed, move_y * speed)
     pygame.display.flip()
 pygame.quit()

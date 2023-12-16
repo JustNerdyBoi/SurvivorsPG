@@ -135,7 +135,7 @@ def map_filling(figures, base_way='room_presets'):
         variant_number = random.randint(1, 4)
         selected_preset = presets[str(figure.roomtype)][variant_number - 1]
 
-        loot_positions = random.choices(cursor.execute(
+        loot_positions = random.sample(cursor.execute(
             f'SELECT * FROM "{figure.roomtype}_{variant_number}" WHERE tile_type = 3').fetchall(), k=figure.roomtype)
 
         for loot_position in loot_positions:
@@ -172,15 +172,17 @@ def apply_sprites(rooms, field):
         for tileposition in room.tilepositions:
             tile_coords = (tileposition[1] + room.coords[0], tileposition[0] + room.coords[1])
             tile_type = field[tile_coords[0]][tile_coords[1]]
-
-            if tile_type == 0:
+            if (tileposition[0] + room.coords[0], tileposition[1] + room.coords[1]) in room.lootpositions:
                 core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
                                 tile_coords[0] * SIZE_OF_TEXTURES)
-                if tile_coords in room.lootpositions:
-                    core.TileSprite(room.spritegroup, tile_textures[f'tile_box_{random.randint(1, 4)}.png'],
-                                    tile_coords[1] * SIZE_OF_TEXTURES,
+                core.TileSprite(room.spritegroup, tile_textures[f'tile_box_{random.randint(1, 4)}.png'],
+                                tile_coords[1] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 4,
+                                tile_coords[0] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 4)
+
+            else:
+                if tile_type == 0:
+                    core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
                                     tile_coords[0] * SIZE_OF_TEXTURES)
-                else:
                     plants_random = random.randint(1, 10)  # plants dencity
                     if plants_random != 1:
                         core.TileSprite(room.spritegroup, tile_textures[f'tile_grass_{random.randint(1, 6)}.png'],
@@ -193,48 +195,51 @@ def apply_sprites(rooms, field):
                                         tile_coords[1] * SIZE_OF_TEXTURES - SIZE_OF_TEXTURES // 5,
                                         tile_coords[0] * SIZE_OF_TEXTURES)
 
-            elif tile_type == 2:  # applying path texture
-                up, right, down, left = '1', '1', '1', '1'
+                elif tile_type == 2:  # applying path texture
+                    up, right, down, left = '1', '1', '1', '1'
 
-                if field[tile_coords[0] - 1][tile_coords[1]] == 2:
-                    up = '0'
-                if field[tile_coords[0] + 1][tile_coords[1]] == 2:
-                    down = '0'
-                if field[tile_coords[0]][tile_coords[1] - 1] == 2:
-                    left = '0'
-                if field[tile_coords[0]][tile_coords[1] + 1] == 2:
-                    right = '0'
-                core.TileSprite(room.spritegroup, tile_textures[f'tile_2_{up}{right}{down}{left}.png'],
-                                tile_coords[1] * SIZE_OF_TEXTURES, tile_coords[0] * SIZE_OF_TEXTURES)
-            elif tile_type == 4:
-                core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
-                                tile_coords[0] * SIZE_OF_TEXTURES)
-                forest_random = random.randint(1, 10)  # forest dencity
-                if forest_random >= 7:
-                    type_of_tree = random.randint(1, 10)
+                    if field[tile_coords[0] - 1][tile_coords[1]] == 2:
+                        up = '0'
+                    if field[tile_coords[0] + 1][tile_coords[1]] == 2:
+                        down = '0'
+                    if field[tile_coords[0]][tile_coords[1] - 1] == 2:
+                        left = '0'
+                    if field[tile_coords[0]][tile_coords[1] + 1] == 2:
+                        right = '0'
+                    core.TileSprite(room.spritegroup, tile_textures[f'tile_2_{up}{right}{down}{left}.png'],
+                                    tile_coords[1] * SIZE_OF_TEXTURES, tile_coords[0] * SIZE_OF_TEXTURES)
+                elif tile_type == 4:
+                    core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
+                                    tile_coords[0] * SIZE_OF_TEXTURES)
+                    forest_random = random.randint(1, 10)  # forest dencity
+                    if forest_random >= 7:
+                        type_of_tree = random.randint(1, 10)
 
-                    if type_of_tree >= 4 and field[tile_coords[0] - 1][tile_coords[1]] == 4:
-                        second_render_queue.append(
-                            (room.upper_spritegroup, tile_textures['tile_tree.png'],
-                             tile_coords[1] * SIZE_OF_TEXTURES,
-                             tile_coords[0] * SIZE_OF_TEXTURES))
-                        field[tile_coords[0]][tile_coords[1]] = 1
-                    else:
-                        core.TileSprite(room.spritegroup, tile_textures[f'tile_log_{random.randint(1, 5)}.png'],
-                                        tile_coords[1] * SIZE_OF_TEXTURES,
-                                        tile_coords[0] * SIZE_OF_TEXTURES)
-                elif forest_random <= 6:
-                    core.TileSprite(room.spritegroup, tile_textures[f'tile_dirt_{random.randint(1, 6)}.png'],
-                                    tile_coords[1] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 3,
-                                    tile_coords[0] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 3)
+                        if type_of_tree >= 4 and field[tile_coords[0] - 1][tile_coords[1]] != 1 and \
+                                field[tile_coords[0] + 1][tile_coords[1]] != 1 and field[tile_coords[0]][
+                                tile_coords[1] - 1] != 1 and field[tile_coords[0] - 1][tile_coords[1] + 1] != 1:
+                            second_render_queue.append(
+                                (room.upper_spritegroup, tile_textures['tile_tree.png'],
+                                 tile_coords[1] * SIZE_OF_TEXTURES,
+                                 tile_coords[0] * SIZE_OF_TEXTURES))
+                            field[tile_coords[0]][tile_coords[1]] = 1
+                        else:
+                            core.TileSprite(room.spritegroup, tile_textures[f'tile_log_{random.randint(1, 5)}.png'],
+                                            tile_coords[1] * SIZE_OF_TEXTURES,
+                                            tile_coords[0] * SIZE_OF_TEXTURES)
+                    elif forest_random <= 6:
+                        core.TileSprite(room.spritegroup, tile_textures[f'tile_dirt_{random.randint(1, 6)}.png'],
+                                        tile_coords[1] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 3,
+                                        tile_coords[0] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 3)
 
-            elif tile_type == 1:
-                core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
-                                tile_coords[0] * SIZE_OF_TEXTURES)
-                core.TileSprite(room.spritegroup, tile_textures[f'tile_1_{random.randint(7, 12)}.png'],
-                                tile_coords[1] * SIZE_OF_TEXTURES,
-                                tile_coords[0] * SIZE_OF_TEXTURES)
+                elif tile_type == 1:
+                    core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
+                                    tile_coords[0] * SIZE_OF_TEXTURES)
+                    core.TileSprite(room.spritegroup, tile_textures[f'tile_1_{random.randint(7, 12)}.png'],
+                                    tile_coords[1] * SIZE_OF_TEXTURES,
+                                    tile_coords[0] * SIZE_OF_TEXTURES)
     for render in sorted(second_render_queue, key=lambda rend: rend[3]):
         texture = render[1]
-        core.TileSprite(render[0], texture, render[2] - SIZE_OF_TEXTURES // 2, render[3] - texture.get_rect()[3] + SIZE_OF_TEXTURES)
+        core.TileSprite(render[0], texture, render[2] - SIZE_OF_TEXTURES // 2,
+                        render[3] - texture.get_rect()[3] + SIZE_OF_TEXTURES)
     return rooms
