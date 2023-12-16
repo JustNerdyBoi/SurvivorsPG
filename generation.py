@@ -235,10 +235,6 @@ def apply_sprites(rooms, field):
                                 tile_coords[1] * SIZE_OF_TEXTURES,
                                 tile_coords[0] * SIZE_OF_TEXTURES)
     for render in sorted(second_render_queue, key=lambda rend: rend[3]):
-        current_sprite = pygame.sprite.Sprite(render[0])
         texture = render[1]
-        current_sprite.image = texture
-        current_sprite.rect = texture.get_rect()
-        current_sprite.rect.x = render[2] - SIZE_OF_TEXTURES // 2
-        current_sprite.rect.y = render[3] - texture.get_rect()[3] + SIZE_OF_TEXTURES
+        core.TileSprite(render[0], texture, render[2] - SIZE_OF_TEXTURES // 2, render[3] - texture.get_rect()[3] + SIZE_OF_TEXTURES)
     return rooms

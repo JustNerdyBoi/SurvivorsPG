@@ -13,6 +13,12 @@ class Room:
         self.upper_spritegroup = pygame.sprite.Group()
         self.spritegroup = pygame.sprite.Group()
 
+    def move(self, x, y):
+        for sprite in self.spritegroup:
+            sprite.move_tile(x, y)
+        for sprite in self.upper_spritegroup:
+            sprite.move_tile(x, y)
+
 
 def load_image(name, colorkey=None):
     fullname = os.path.join('textures', name)
@@ -36,3 +42,6 @@ class TileSprite(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+
+    def move_tile(self, x, y):
+        self.rect = self.rect.move(x, y)
