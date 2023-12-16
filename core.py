@@ -10,6 +10,7 @@ class Room:
         self.roomtype = roomtype
         self.tilepositions = []
         self.lootpositions = []
+        self.upper_spritegroup = pygame.sprite.Group()
         self.spritegroup = pygame.sprite.Group()
 
 

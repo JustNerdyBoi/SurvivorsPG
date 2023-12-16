@@ -17,5 +17,6 @@ while running:
     screen.fill(pygame.Color("black"))
     for room in rooms:
         room.spritegroup.draw(screen)
+        room.upper_spritegroup.draw(screen)
     pygame.display.flip()
 pygame.quit()

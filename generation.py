@@ -215,7 +215,7 @@ def apply_sprites(rooms, field):
 
                     if type_of_tree >= 4 and field[tile_coords[0] - 1][tile_coords[1]] == 4:
                         second_render_queue.append(
-                            (room.spritegroup, tile_textures['tile_tree.png'],
+                            (room.upper_spritegroup, tile_textures['tile_tree.png'],
                              tile_coords[1] * SIZE_OF_TEXTURES,
                              tile_coords[0] * SIZE_OF_TEXTURES))
                         field[tile_coords[0]][tile_coords[1]] = 1
