@@ -18,5 +18,4 @@ while running:
     for room in rooms:
         room.spritegroup.draw(screen)
     pygame.display.flip()
-
 pygame.quit()

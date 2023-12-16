@@ -210,15 +210,17 @@ def apply_sprites(rooms, field):
                 core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
                                 tile_coords[0] * SIZE_OF_TEXTURES)
                 forest_random = random.randint(1, 10)  # forest dencity
-                if forest_random >= 8:
-                    type_of_tree = random.randint(1, 4)
-                    if type_of_tree != 1:
+                if forest_random >= 7:
+                    type_of_tree = random.randint(1, 10)
+
+                    if type_of_tree >= 4 and field[tile_coords[0] - 1][tile_coords[1]] == 4:
                         second_render_queue.append(
-                            (room.spritegroup, tile_textures['tile_tree_1.png'],
+                            (room.spritegroup, tile_textures['tile_tree.png'],
                              tile_coords[1] * SIZE_OF_TEXTURES,
                              tile_coords[0] * SIZE_OF_TEXTURES))
+                        field[tile_coords[0]][tile_coords[1]] = 1
                     else:
-                        core.TileSprite(room.spritegroup, tile_textures['tile_tree_2.png'],
+                        core.TileSprite(room.spritegroup, tile_textures[f'tile_log_{random.randint(1, 5)}.png'],
                                         tile_coords[1] * SIZE_OF_TEXTURES,
                                         tile_coords[0] * SIZE_OF_TEXTURES)
                 elif forest_random <= 6:
@@ -232,7 +234,6 @@ def apply_sprites(rooms, field):
                 core.TileSprite(room.spritegroup, tile_textures[f'tile_1_{random.randint(7, 12)}.png'],
                                 tile_coords[1] * SIZE_OF_TEXTURES,
                                 tile_coords[0] * SIZE_OF_TEXTURES)
-    print(second_render_queue)
     for render in sorted(second_render_queue, key=lambda rend: rend[3]):
         current_sprite = pygame.sprite.Sprite(render[0])
         texture = render[1]
