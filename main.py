@@ -1,33 +1,35 @@
 import pygame
-
 import core
 import generation
 
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-screen_centre = (screen.get_rect()[2] // 2, screen.get_rect()[3] // 2)
-print(screen_centre)
+FULLSCREEN = False
+if FULLSCREEN:
+    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+else:
+    screen = pygame.display.set_mode((1024, 1024))
+screen_size = (screen.get_rect()[2], screen.get_rect()[3])
 pygame.display.set_caption('Surivorsmap')
 rooms = generation.create_board()
 field = generation.map_filling(rooms)
 rooms = generation.apply_sprites(rooms, field)
 
-running = True
-move_y = 0
-move_x = 0
-speed = 1
-min_fps = 1000
-max_fps = 0
-
 ENTITYUPDATE = pygame.USEREVENT + 1
 pygame.time.set_timer(ENTITYUPDATE, 16)
 
-test_entity_group = pygame.sprite.Group()
-rock_entity = core.Entity(test_entity_group, core.load_image('tile_1_7.png'), screen_centre, 100, 2, 1)
+entity_group = pygame.sprite.Group()
+player = core.Entity(entity_group, core.load_image('tile_1_7.png'), (100, 100), 100, 1, 1)
 
 clock = pygame.time.Clock()
-current_cam_pos = screen_centre
+current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
+
 current_room_pos = (0, 0)
 prev_room_pos = (0, 0)
+field_pos = [0, 0]
+render_queue = []
+running = True
+move_y = 0
+move_x = 0
+
 while running:
 
     for event in pygame.event.get():
@@ -53,16 +55,40 @@ while running:
                 move_x = 0
 
         if event.type == ENTITYUPDATE:
-            rock_entity.acceleration_y = move_y
-            rock_entity.acceleration_x = move_x
+            player.acceleration_y = move_y
+            player.acceleration_x = move_x
 
-    current_cam_pos = (rock_entity.rect.x, rock_entity.rect.y)
+    current_player_pos = (player.rect.x, player.rect.y)
+
+    if current_player_pos[0] >= screen_size[0]:
+        field_pos[0] += screen_size[0]
+        player.rect.x -= screen_size[0]
+        for room in rooms:
+            room.move(screen_size[0] * -1, 0)
+    elif current_player_pos[0] <= 0:
+        field_pos[0] -= screen_size[0]
+        player.rect.x += screen_size[0]
+        for room in rooms:
+            room.move(screen_size[0], 0)
+
+    if current_player_pos[1] >= screen_size[1]:
+        field_pos[1] += screen_size[1]
+        player.rect.y -= screen_size[1]
+        for room in rooms:
+            room.move(0, screen_size[1] * -1)
+
+    elif current_player_pos[1] <= 0:
+        field_pos[1] -= screen_size[1]
+        player.rect.y += screen_size[1]
+        for room in rooms:
+            room.move(0, screen_size[1])
+
+    current_player_pos = (player.rect.x, player.rect.y)
     current_room_pos = (
-        round(current_cam_pos[1] / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
-        round(current_cam_pos[0] / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
+        round((current_player_pos[1] + field_pos[1]) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
+        round((current_player_pos[0] + field_pos[0]) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
 
-    screen.fill(pygame.Color("black"))
-    if prev_room_pos != current_room_pos:
+    if prev_room_pos != current_room_pos or render_queue == []:
         render_queue = []
         for room in rooms:
             if current_room_pos in room.covering_squares:
@@ -72,15 +98,13 @@ while running:
         for roomneighbour in rooms:
             if roomneighbour.position in neighbours_pos:
                 render_queue.append(roomneighbour)
-    rock_entity.update(render_queue)
+    player.update(render_queue)
 
-
+    screen.fill(pygame.Color("black"))
     for render_room in render_queue:
         render_room.spritegroup.draw(screen)
         render_room.collisionsprites.draw(screen)
-
-    test_entity_group.draw(screen)
-
+    entity_group.draw(screen)
     for render_room in render_queue:
         render_room.upper_spritegroup.draw(screen)
 
