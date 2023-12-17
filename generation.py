@@ -186,7 +186,7 @@ def apply_sprites(rooms, field):
         if texture[:4] == 'tile':
             tile_textures[texture] = core.load_image(texture)
 
-    second_render_queue = []
+    second_applyment_queue = []
 
     for room in rooms:
 
@@ -239,11 +239,10 @@ def apply_sprites(rooms, field):
                         if type_of_tree >= 4 and field[tile_coords[0] - 1][tile_coords[1]] != 1 and \
                                 field[tile_coords[0] + 1][tile_coords[1]] != 1 and field[tile_coords[0]][
                                 tile_coords[1] - 1] != 1 and field[tile_coords[0] - 1][tile_coords[1] + 1] != 1:
-                            second_render_queue.append(
-                                (room.upper_spritegroup, tile_textures['tile_tree.png'],
+                            second_applyment_queue.append(
+                                (room, tile_textures['tile_tree.png'],
                                  tile_coords[1] * SIZE_OF_TEXTURES,
                                  tile_coords[0] * SIZE_OF_TEXTURES))
-                            field[tile_coords[0]][tile_coords[1]] = 1
                         else:
                             core.TileSprite(room.spritegroup, tile_textures[f'tile_log_{random.randint(1, 5)}.png'],
                                             tile_coords[1] * SIZE_OF_TEXTURES,
@@ -256,11 +255,13 @@ def apply_sprites(rooms, field):
                 elif tile_type == 1:
                     core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
                                     tile_coords[0] * SIZE_OF_TEXTURES)
-                    core.TileSprite(room.spritegroup, tile_textures[f'tile_1_{random.randint(7, 12)}.png'],
+                    core.TileSprite(room.collisionsprites, tile_textures[f'tile_1_{random.randint(7, 12)}.png'],
                                     tile_coords[1] * SIZE_OF_TEXTURES,
                                     tile_coords[0] * SIZE_OF_TEXTURES)
-    for render in sorted(second_render_queue, key=lambda rend: rend[3]):
+    for render in sorted(second_applyment_queue, key=lambda rend: rend[3]):
         texture = render[1]
-        core.TileSprite(render[0], texture, render[2] - SIZE_OF_TEXTURES // 2,
+        core.TileSprite(render[0].upper_spritegroup, texture, render[2] - SIZE_OF_TEXTURES // 2,
                         render[3] - texture.get_rect()[3] + SIZE_OF_TEXTURES)
+        core.TileSprite(render[0].collisionsprites, tile_textures['tile_0.png'],
+                        render[2], render[3])
     return rooms

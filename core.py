@@ -27,9 +27,12 @@ class Room:
 
         self.upper_spritegroup = pygame.sprite.Group()
         self.spritegroup = pygame.sprite.Group()
+        self.collisionsprites = pygame.sprite.Group()
 
     def move(self, x, y):
         for sprite in self.spritegroup:
+            sprite.move_tile(x, y)
+        for sprite in self.collisionsprites:
             sprite.move_tile(x, y)
         for sprite in self.upper_spritegroup:
             sprite.move_tile(x, y)
@@ -60,3 +63,48 @@ class TileSprite(pygame.sprite.Sprite):
 
     def move_tile(self, x, y):
         self.rect = self.rect.move(x, y)
+
+
+class Entity(pygame.sprite.Sprite):
+    def __init__(self, group, texture, coordinates, max_hp, max_speed=1, regen=0):
+        super().__init__(group)
+        self.image = texture
+        self.rect = self.image.get_rect()
+        self.rect.x = coordinates[0]
+        self.rect.y = coordinates[1]
+
+        self.max_hp = max_hp
+        self.hp = max_hp
+        self.regen = regen
+
+        self.speed_x, self.speed_y = (0, 0)
+        self.max_speed = max_speed
+        self.acceleration_x, self.acceleration_y = (0, 0)
+        self.friction = 0.1
+
+    def update(self, collisiongroup):
+        if self.regen > 0 and self.hp < self.max_hp:
+            self.hp += self.regen
+        if self.speed_x != 0 or self.acceleration_x != 0:
+            if abs(self.speed_x + self.acceleration_x) <= self.max_speed:
+                self.speed_x += self.acceleration_x
+            if self.acceleration_x == 0:
+                self.speed_x -= self.friction * (self.speed_x / abs(self.speed_x))
+
+            pre_x = self.rect.x
+            self.rect.x += self.speed_x
+            if pygame.sprite.spritecollide(self, collisiongroup, False):
+                self.speed_x = 0
+                self.rect.x = pre_x
+
+        if self.speed_y != 0 or self.acceleration_y != 0:
+            if abs(self.speed_y + self.acceleration_y) <= self.max_speed:
+                self.speed_y += self.acceleration_y
+            if self.acceleration_y == 0:
+                self.speed_y -= self.friction * (self.speed_y / abs(self.speed_y))
+
+            pre_y = self.rect.y
+            self.rect.y += self.speed_y
+            if pygame.sprite.spritecollide(self, collisiongroup, False):
+                self.speed_y = 0
+                self.rect.y = pre_y
