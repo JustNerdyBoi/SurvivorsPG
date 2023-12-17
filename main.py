@@ -22,7 +22,7 @@ ENTITYUPDATE = pygame.USEREVENT + 1
 pygame.time.set_timer(ENTITYUPDATE, 16)
 
 test_entity_group = pygame.sprite.Group()
-rock_entity = core.Entity(test_entity_group, core.load_image('tile_1_7.png'), screen_centre, 100, 1.5, 1)
+rock_entity = core.Entity(test_entity_group, core.load_image('tile_1_7.png'), screen_centre, 100, 2, 1)
 
 clock = pygame.time.Clock()
 current_cam_pos = screen_centre
@@ -72,8 +72,8 @@ while running:
         for roomneighbour in rooms:
             if roomneighbour.position in neighbours_pos:
                 render_queue.append(roomneighbour)
+    rock_entity.update(render_queue)
 
-    rock_entity.update(render_queue[0].collisionsprites)
 
     for render_room in render_queue:
         render_room.spritegroup.draw(screen)

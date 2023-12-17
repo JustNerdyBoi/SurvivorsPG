@@ -54,10 +54,13 @@ def load_image(name, colorkey=None):
 
 
 class TileSprite(pygame.sprite.Sprite):
-    def __init__(self, group, texture, x, y):
+    def __init__(self, group, texture, x, y, rect=None):
         super().__init__(group)
         self.image = texture
-        self.rect = self.image.get_rect()
+        if rect:
+            self.rect = rect.get_rect(rect)
+        else:
+            self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
 
@@ -82,7 +85,7 @@ class Entity(pygame.sprite.Sprite):
         self.acceleration_x, self.acceleration_y = (0, 0)
         self.friction = 0.1
 
-    def update(self, collisiongroup):
+    def update(self, collisiongroups):
         if self.regen > 0 and self.hp < self.max_hp:
             self.hp += self.regen
         if self.speed_x != 0 or self.acceleration_x != 0:
@@ -93,9 +96,11 @@ class Entity(pygame.sprite.Sprite):
 
             pre_x = self.rect.x
             self.rect.x += self.speed_x
-            if pygame.sprite.spritecollide(self, collisiongroup, False):
-                self.speed_x = 0
-                self.rect.x = pre_x
+            for collisiongroup in collisiongroups:
+                if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
+                    self.speed_x = 0
+                    self.rect.x = pre_x
+                    break
 
         if self.speed_y != 0 or self.acceleration_y != 0:
             if abs(self.speed_y + self.acceleration_y) <= self.max_speed:
@@ -105,6 +110,8 @@ class Entity(pygame.sprite.Sprite):
 
             pre_y = self.rect.y
             self.rect.y += self.speed_y
-            if pygame.sprite.spritecollide(self, collisiongroup, False):
-                self.speed_y = 0
-                self.rect.y = pre_y
+            for collisiongroup in collisiongroups:
+                if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
+                    self.speed_y = 0
+                    self.rect.y = pre_y
+                    break
