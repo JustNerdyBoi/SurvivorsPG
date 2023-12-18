@@ -2,7 +2,7 @@ import pygame
 import core
 import generation
 
-FULLSCREEN = False
+FULLSCREEN = True
 if FULLSCREEN:
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 else:
