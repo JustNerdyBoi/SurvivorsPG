@@ -1,12 +1,13 @@
 import pygame
 import core
 import generation
+import math
 
-FULLSCREEN = True
+FULLSCREEN = False
 if FULLSCREEN:
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 else:
-    screen = pygame.display.set_mode((1024, 1024))
+    screen = pygame.display.set_mode((2048, 1024))
 screen_size = (screen.get_rect()[2], screen.get_rect()[3])
 pygame.display.set_caption('Surivorsmap')
 rooms = generation.create_board()
@@ -17,7 +18,7 @@ ENTITYUPDATE = pygame.USEREVENT + 1
 pygame.time.set_timer(ENTITYUPDATE, 16)
 
 entity_group = pygame.sprite.Group()
-player = core.Entity(entity_group, core.load_image('tile_1_7.png'), (100, 100), 100, 1, 1)
+player = core.Entity(entity_group, core.load_image('tile_1_7.png'), (100, 100), 100, 1.5)
 
 clock = pygame.time.Clock()
 current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
@@ -54,9 +55,8 @@ while running:
             elif event.key == pygame.K_d and move_x != -0.1:
                 move_x = 0
 
-        if event.type == ENTITYUPDATE:
-            player.acceleration_y = move_y
-            player.acceleration_x = move_x
+    player.acceleration_y = move_y
+    player.acceleration_x = move_x
 
     current_player_pos = (player.rect.x, player.rect.y)
 
@@ -88,6 +88,9 @@ while running:
         round((current_player_pos[1] + field_pos[1]) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
         round((current_player_pos[0] + field_pos[0]) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
 
+    mouse_relative_coords = (180 / math.pi) * -math.atan2(pygame.mouse.get_pos()[1] - player.rect.y,
+                                                          pygame.mouse.get_pos()[0] - player.rect.x)
+
     if prev_room_pos != current_room_pos or render_queue == []:
         render_queue = []
         for room in rooms:
@@ -98,9 +101,9 @@ while running:
         for roomneighbour in rooms:
             if roomneighbour.position in neighbours_pos:
                 render_queue.append(roomneighbour)
-    player.update(render_queue)
+    player.update(render_queue, clock.tick(60))
 
-    screen.fill(pygame.Color("black"))
+    screen.fill(pygame.Color(0, 0, 0))
     for render_room in render_queue:
         render_room.spritegroup.draw(screen)
         render_room.collisionsprites.draw(screen)

@@ -69,7 +69,7 @@ class TileSprite(pygame.sprite.Sprite):
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, group, texture, coordinates, max_hp, max_speed=1, regen=0):
+    def __init__(self, group, texture, coordinates, max_hp, max_speed=1, regen=0, collision=True):
         super().__init__(group)
         self.image = texture
         self.rect = self.image.get_rect()
@@ -83,35 +83,48 @@ class Entity(pygame.sprite.Sprite):
         self.speed_x, self.speed_y = (0, 0)
         self.max_speed = max_speed
         self.acceleration_x, self.acceleration_y = (0, 0)
-        self.friction = 0.1
+        self.friction = 0.2
+        self.speed_coefficient = 0.2
+        self.collisionable = collision
 
-    def update(self, collisiongroups):
+    def update(self, collisiongroups, time_from_prev_frame):
         if self.regen > 0 and self.hp < self.max_hp:
             self.hp += self.regen
+
         if self.speed_x != 0 or self.acceleration_x != 0:
             if abs(self.speed_x + self.acceleration_x) <= self.max_speed:
                 self.speed_x += self.acceleration_x
-            if self.acceleration_x == 0:
-                self.speed_x -= self.friction * (self.speed_x / abs(self.speed_x))
+            if self.acceleration_x == 0 and self.speed_x != 0:
+                pre_friction_result = self.friction * (self.speed_x / abs(self.speed_x))
+                if abs(pre_friction_result) < abs(self.speed_x):
+                    self.speed_x -= pre_friction_result
+                else:
+                    self.speed_x = 0
 
             pre_x = self.rect.x
-            self.rect.x += self.speed_x
-            for collisiongroup in collisiongroups:
-                if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
-                    self.speed_x = 0
-                    self.rect.x = pre_x
-                    break
+            self.rect.x += self.speed_x * time_from_prev_frame * self.speed_coefficient
+            if self.collisionable:
+                for collisiongroup in collisiongroups:
+                    if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
+                        self.speed_x = 0
+                        self.rect.x = pre_x
+                        break
 
         if self.speed_y != 0 or self.acceleration_y != 0:
             if abs(self.speed_y + self.acceleration_y) <= self.max_speed:
                 self.speed_y += self.acceleration_y
-            if self.acceleration_y == 0:
-                self.speed_y -= self.friction * (self.speed_y / abs(self.speed_y))
+            if self.acceleration_y == 0 and self.speed_y != 0:
+                pre_friction_result = self.friction * (self.speed_y / abs(self.speed_y))
+                if abs(pre_friction_result) < abs(self.speed_y):
+                    self.speed_y -= pre_friction_result
+                else:
+                    self.speed_y = 0
 
             pre_y = self.rect.y
-            self.rect.y += self.speed_y
-            for collisiongroup in collisiongroups:
-                if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
-                    self.speed_y = 0
-                    self.rect.y = pre_y
-                    break
+            self.rect.y += self.speed_y * time_from_prev_frame * self.speed_coefficient
+            if self.collisionable:
+                for collisiongroup in collisiongroups:
+                    if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
+                        self.speed_y = 0
+                        self.rect.y = pre_y
+                        break
