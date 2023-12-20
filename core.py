@@ -84,7 +84,7 @@ class Entity(pygame.sprite.Sprite):
         self.max_speed = max_speed
         self.acceleration_x, self.acceleration_y = (0, 0)
         self.friction = 0.2
-        self.speed_coefficient = 0.2
+        self.speed_coefficient = 0.225
         self.collisionable = collision
 
     def update(self, collisiongroups, time_from_prev_frame):
