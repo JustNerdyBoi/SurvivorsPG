@@ -73,6 +73,7 @@ class Entity(pygame.sprite.Sprite):
         super().__init__(group)
         self.image = texture
         self.rect = self.image.get_rect()
+        self.position_on_map = list(coordinates)
         self.rect.x = coordinates[0]
         self.rect.y = coordinates[1]
 
@@ -102,13 +103,16 @@ class Entity(pygame.sprite.Sprite):
                     self.speed_x = 0
 
             pre_x = self.rect.x
-            self.rect.x += self.speed_x * time_from_prev_frame * self.speed_coefficient
+            movement_x = round(self.speed_x * time_from_prev_frame * self.speed_coefficient)
+            self.rect.x += movement_x
             if self.collisionable:
                 for collisiongroup in collisiongroups:
                     if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
                         self.speed_x = 0
                         self.rect.x = pre_x
                         break
+            if self.rect.x != pre_x:
+                self.position_on_map[0] += movement_x
 
         if self.speed_y != 0 or self.acceleration_y != 0:
             if abs(self.speed_y + self.acceleration_y) <= self.max_speed:
@@ -121,10 +125,14 @@ class Entity(pygame.sprite.Sprite):
                     self.speed_y = 0
 
             pre_y = self.rect.y
-            self.rect.y += self.speed_y * time_from_prev_frame * self.speed_coefficient
+            movement_y = round(self.speed_y * time_from_prev_frame * self.speed_coefficient)
+            self.rect.y += movement_y
             if self.collisionable:
                 for collisiongroup in collisiongroups:
                     if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
                         self.speed_y = 0
                         self.rect.y = pre_y
                         break
+            if self.rect.y != pre_y:
+                self.position_on_map[1] += movement_y
+        print(self.position_on_map)
