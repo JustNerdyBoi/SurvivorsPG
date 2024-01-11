@@ -68,9 +68,9 @@ class TileSprite(pygame.sprite.Sprite):
 
 
 def load_image(subdirectory, name, colorkey=None):
-    print(name)
     fullname = os.path.join(f'textures/{subdirectory}', name)
     if not os.path.isfile(fullname):
+        print(f'no such file as {name}')
         sys.exit()
     image = pygame.image.load(fullname)
     if colorkey is not None:
@@ -80,6 +80,7 @@ def load_image(subdirectory, name, colorkey=None):
         image.set_colorkey(colorkey)
     else:
         image = image.convert_alpha()
+    print(f'image from {name} was successfully imported')
     return image
 
 

@@ -95,8 +95,8 @@ while running:
 
     current_player_pos = (player.rect.x, player.rect.y)
     current_room_pos = (
-        round((current_player_pos[1] + field_pos[1]) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
-        round((current_player_pos[0] + field_pos[0]) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
+        round((current_player_pos[1] + field_pos[1] + player.rect.size[0] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
+        round((current_player_pos[0] + field_pos[0] + player.rect.size[1] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
 
     mouse_relative_coords = (180 / math.pi) * -math.atan2(pygame.mouse.get_pos()[1] - player.rect.y,
                                                           pygame.mouse.get_pos()[0] - player.rect.x)
@@ -118,6 +118,9 @@ while running:
         render_room.spritegroup.draw(screen)
         render_room.collisionsprites.draw(screen)
 
+    if True:  # DEBUG use True for hitboxes
+        for entity in entity_group:
+            pygame.draw.rect(screen, (0, 255, 0), entity.hitbox)
     entity_group.draw(screen)
 
     for render_room in render_queue:
