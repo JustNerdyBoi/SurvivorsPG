@@ -38,8 +38,9 @@ class Room:
             sprite.move_tile(x, y)
 
 
-def load_image(name, colorkey=None):
-    fullname = os.path.join('textures', name)
+def load_image(subdirectory, name, colorkey=None):
+    print(name)
+    fullname = os.path.join(f'textures/{subdirectory}', name)
     if not os.path.isfile(fullname):
         sys.exit()
     image = pygame.image.load(fullname)
@@ -69,13 +70,19 @@ class TileSprite(pygame.sprite.Sprite):
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, group, texture, coordinates, max_hp, max_speed=1, regen=0, collision=True):
+    def __init__(self, group, texture, coordinates, hitbox_rect, max_hp, max_speed=1, regen=0, collision=True):
         super().__init__(group)
         self.image = texture
-        self.rect = self.image.get_rect()
         self.position_on_map = list(coordinates)
+
+        self.rect = self.image.get_rect()
         self.rect.x = coordinates[0]
         self.rect.y = coordinates[1]
+
+        hb_x_pos, hb_y_pos, hb_x_size, hb_y_size = hitbox_rect
+        self.hitbox = Hitbox(pygame.Surface((hb_x_size, hb_y_size), pygame.SRCALPHA))
+        self.hitbox.rect.x += self.rect.x + hb_x_pos
+        self.hitbox.rect.y += self.rect.y + hb_y_pos
 
         self.max_hp = max_hp
         self.hp = max_hp
@@ -84,8 +91,8 @@ class Entity(pygame.sprite.Sprite):
         self.speed_x, self.speed_y = (0, 0)
         self.max_speed = max_speed
         self.acceleration_x, self.acceleration_y = (0, 0)
-        self.friction = 0.2
-        self.speed_coefficient = 0.225
+        self.friction = 0.1
+        self.speed_coefficient = 0.1
         self.collisionable = collision
 
     def update(self, collisiongroups, time_from_prev_frame):
@@ -102,16 +109,17 @@ class Entity(pygame.sprite.Sprite):
                 else:
                     self.speed_x = 0
 
-            pre_x = self.rect.x
+            pre_x = self.hitbox.rect.x
             movement_x = round(self.speed_x * time_from_prev_frame * self.speed_coefficient)
-            self.rect.x += movement_x
+            self.hitbox.rect.x += movement_x
             if self.collisionable:
                 for collisiongroup in collisiongroups:
-                    if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
+                    if pygame.sprite.spritecollide(self.hitbox, collisiongroup.collisionsprites, False):
                         self.speed_x = 0
-                        self.rect.x = pre_x
+                        self.hitbox.rect.x = pre_x
                         break
-            if self.rect.x != pre_x:
+            if self.hitbox.rect.x != pre_x:
+                self.rect.x += movement_x
                 self.position_on_map[0] += movement_x
 
         if self.speed_y != 0 or self.acceleration_y != 0:
@@ -124,15 +132,22 @@ class Entity(pygame.sprite.Sprite):
                 else:
                     self.speed_y = 0
 
-            pre_y = self.rect.y
+            pre_y = self.hitbox.rect.y
             movement_y = round(self.speed_y * time_from_prev_frame * self.speed_coefficient)
-            self.rect.y += movement_y
+            self.hitbox.rect.y += movement_y
             if self.collisionable:
                 for collisiongroup in collisiongroups:
-                    if pygame.sprite.spritecollide(self, collisiongroup.collisionsprites, False):
+                    if pygame.sprite.spritecollide(self.hitbox, collisiongroup.collisionsprites, False):
                         self.speed_y = 0
-                        self.rect.y = pre_y
+                        self.hitbox.rect.y = pre_y
                         break
-            if self.rect.y != pre_y:
+            if self.hitbox.rect.y != pre_y:
+                self.rect.y += movement_y
                 self.position_on_map[1] += movement_y
-        print(self.position_on_map)
+
+
+class Hitbox(pygame.sprite.Sprite):
+    def __init__(self, surface):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = surface
+        self.rect = self.image.get_rect()

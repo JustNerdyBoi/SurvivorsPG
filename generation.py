@@ -182,9 +182,8 @@ def map_filling(figures, base_way='room_presets'):
 
 def apply_sprites(rooms, field):
     tile_textures = {}  # loading tile textures
-    for texture in next(walk('textures'), (None, None, []))[2]:
-        if texture[:4] == 'tile':
-            tile_textures[texture] = core.load_image(texture)
+    for texture in next(walk('textures\map_tiles'), (None, None, []))[2]:
+        tile_textures[texture] = core.load_image('map_tiles', texture)
 
     second_applyment_queue = []
 
@@ -238,7 +237,7 @@ def apply_sprites(rooms, field):
 
                         if type_of_tree >= 4 and field[tile_coords[0] - 1][tile_coords[1]] != 1 and \
                                 field[tile_coords[0] + 1][tile_coords[1]] != 1 and field[tile_coords[0]][
-                                tile_coords[1] - 1] != 1 and field[tile_coords[0] - 1][tile_coords[1] + 1] != 1:
+                            tile_coords[1] - 1] != 1 and field[tile_coords[0] - 1][tile_coords[1] + 1] != 1:
                             second_applyment_queue.append(
                                 (room, tile_textures['tile_tree.png'],
                                  tile_coords[1] * SIZE_OF_TEXTURES,

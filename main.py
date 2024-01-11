@@ -18,7 +18,8 @@ ENTITYUPDATE = pygame.USEREVENT + 1
 pygame.time.set_timer(ENTITYUPDATE, 16)
 
 entity_group = pygame.sprite.Group()
-player = core.Entity(entity_group, core.load_image('tile_1_7.png'), (100, 100), 100, 1.5)
+player = core.Entity(entity_group, core.load_image('player_sprites', 'adventurer-idle-00.png'), (100, 100),
+                     (17, 9, 14, 26), 1.5)
 
 clock = pygame.time.Clock()
 current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
@@ -107,10 +108,12 @@ while running:
     for render_room in render_queue:
         render_room.spritegroup.draw(screen)
         render_room.collisionsprites.draw(screen)
+
+    pygame.draw.rect(screen, (255, 0, 0), player.hitbox)
     entity_group.draw(screen)
+
     for render_room in render_queue:
         render_room.upper_spritegroup.draw(screen)
-
     prev_room_pos = current_room_pos
     current_room_pos = (0, 0)
     pygame.display.flip()
