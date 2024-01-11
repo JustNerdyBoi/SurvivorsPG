@@ -2,6 +2,8 @@ import pygame
 import sys
 import os
 
+import generation
+
 
 class Room:
     def __init__(self, position, roomtype, roomsize):
@@ -12,6 +14,7 @@ class Room:
         self.lootpositions = []
         self.roomneighbours = []
         self.covering_squares = []
+
         if roomtype == 1:
             self.covering_squares.append(position)
         elif roomtype in [2, 4]:
@@ -28,6 +31,17 @@ class Room:
         self.upper_spritegroup = pygame.sprite.Group()
         self.spritegroup = pygame.sprite.Group()
         self.collisionsprites = pygame.sprite.Group()
+        self.mist_rects = []
+
+    def render_mist(self, screen, fied_pos):
+        self.mist_rects = []
+        for square_coords in self.covering_squares:
+            square_size = generation.SIZE_OF_ROOM * generation.SIZE_OF_TEXTURES
+            surface = pygame.Surface((square_size, square_size))
+            surface.set_alpha(220)
+            surface.fill((0, 0, 0))
+            screen.blit(surface, (square_coords[1] * square_size - fied_pos[0],
+                                  square_coords[0] * square_size - fied_pos[1]))
 
     def move(self, x, y):
         for sprite in self.spritegroup:
@@ -73,13 +87,12 @@ class AnimatedTexture:
     def __init__(self, images_list, frame_time):
         self.images = images_list
         self.frame_time = frame_time
-
-    def getframeimage(self, frame_number):
-        return self.images[frame_number]
+        self.max_frame = len(images_list) - 1
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, group, texture, coordinates, hitbox_rect, max_hp, max_speed=1, regen=0, collision=True):
+    def __init__(self, group, texture, coordinates, hitbox_rect, idle_animation=None, movement_animation=None,
+                 max_hp=100, max_speed=1, regen=0, collision=True):
         super().__init__(group)
         self.image = texture
         self.position_on_map = list(coordinates)
@@ -103,7 +116,22 @@ class Entity(pygame.sprite.Sprite):
         self.friction = 0.1
         self.speed_coefficient = 0.15
         self.collisionable = collision
+
+        self.animation_clock = pygame.time.Clock()
+        self.animation_clock_current = 0
         self.positive_x_facing = True
+        self.current_animation_stage = 0
+
+        if idle_animation:
+            self.idle_animation = idle_animation
+        else:
+            self.idle_animation = AnimatedTexture([texture], 10)
+        self.current_animation = self.idle_animation
+
+        if movement_animation:
+            self.movement_animation = movement_animation
+        else:
+            self.movement_animation = AnimatedTexture([texture], 10)
 
     def move_entity(self, x, y):
         self.rect.x += x
@@ -112,7 +140,6 @@ class Entity(pygame.sprite.Sprite):
         self.hitbox.rect.y += y
 
     def update(self, collisiongroups, time_from_prev_frame):
-        print(time_from_prev_frame)
         if self.regen > 0 and self.hp < self.max_hp:
             self.hp += self.regen
 
@@ -140,10 +167,8 @@ class Entity(pygame.sprite.Sprite):
                 self.position_on_map[0] += movement_x
                 if movement_x < 0 and self.positive_x_facing:
                     self.positive_x_facing = False
-                    self.image = pygame.transform.flip(self.image, True, False)
                 elif movement_x > 0 and not self.positive_x_facing:
                     self.positive_x_facing = True
-                    self.image = pygame.transform.flip(self.image, True, False)
 
         if self.speed_y != 0 or self.acceleration_y != 0:
             if abs(self.speed_y + self.acceleration_y) <= self.max_speed:
@@ -168,6 +193,21 @@ class Entity(pygame.sprite.Sprite):
                 self.rect.y += movement_y
                 self.position_on_map[1] += movement_y
 
+        self.animation_clock_current += self.animation_clock.tick()
+
+        if abs(self.speed_y) >= self.max_speed / 2 or abs(self.speed_x) >= self.max_speed / 2:
+            self.current_animation = self.movement_animation
+        elif self.current_animation != self.idle_animation:
+            self.current_animation = self.idle_animation
+
+        if self.animation_clock_current >= self.current_animation.frame_time > 0:
+            self.animation_clock_current = 0
+            if self.current_animation_stage < self.current_animation.max_frame:
+                self.current_animation_stage += 1
+            else:
+                self.current_animation_stage = 0
+            self.image = pygame.transform.flip(self.current_animation.images[self.current_animation_stage],
+                                               not self.positive_x_facing, False)
 
 
 class Hitbox(pygame.sprite.Sprite):

@@ -18,8 +18,17 @@ field = generation.map_filling(rooms)
 rooms = generation.apply_sprites(rooms, field)
 
 entity_group = pygame.sprite.Group()
-player = core.Entity(entity_group, core.load_image('player_sprites', 'adventurer-idle-00.png'), (100, 100),
-                     (17, 9, 14, 26), 1.5)
+
+idle_image_list = []
+for i in range(3):
+    idle_image_list.append(core.load_image('player_sprites', f'idle_{i}.png'))
+run_image_list = []
+for i in range(5):
+    run_image_list.append(core.load_image('player_sprites', f'run_{i}.png'))
+
+player = core.Entity(entity_group, core.load_image('player_sprites', 'idle_0.png'), (100, 100),
+                     (17, 9, 14, 26), core.AnimatedTexture(idle_image_list, 250),
+                     core.AnimatedTexture(run_image_list, 70))
 
 game_tickrate = pygame.time.Clock()
 current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
@@ -113,6 +122,11 @@ while running:
 
     for render_room in render_queue:
         render_room.upper_spritegroup.draw(screen)
+
+    for render_room in render_queue:
+        if current_room_pos not in render_room.covering_squares:
+            render_room.render_mist(screen, field_pos)
+
     prev_room_pos = current_room_pos
     current_room_pos = (0, 0)
     pygame.display.flip()
