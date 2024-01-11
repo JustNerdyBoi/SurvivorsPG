@@ -4,24 +4,24 @@ import generation
 import math
 
 FULLSCREEN = False
+FPS = 60  # changed for FPS
+
 if FULLSCREEN:
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 else:
     screen = pygame.display.set_mode((2048, 1024))
+
 screen_size = (screen.get_rect()[2], screen.get_rect()[3])
 pygame.display.set_caption('Surivorsmap')
 rooms = generation.create_board()
 field = generation.map_filling(rooms)
 rooms = generation.apply_sprites(rooms, field)
 
-ENTITYUPDATE = pygame.USEREVENT + 1
-pygame.time.set_timer(ENTITYUPDATE, 16)
-
 entity_group = pygame.sprite.Group()
 player = core.Entity(entity_group, core.load_image('player_sprites', 'adventurer-idle-00.png'), (100, 100),
                      (17, 9, 14, 26), 1.5)
 
-clock = pygame.time.Clock()
+game_tickrate = pygame.time.Clock()
 current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
 
 current_room_pos = (0, 0)
@@ -63,24 +63,24 @@ while running:
 
     if current_player_pos[0] >= screen_size[0]:
         field_pos[0] += screen_size[0]
-        player.rect.x -= screen_size[0]
+        player.move_entity(-screen_size[0], 0)
         for room in rooms:
             room.move(screen_size[0] * -1, 0)
     elif current_player_pos[0] <= 0:
         field_pos[0] -= screen_size[0]
-        player.rect.x += screen_size[0]
+        player.move_entity(screen_size[0], 0)
         for room in rooms:
             room.move(screen_size[0], 0)
 
     if current_player_pos[1] >= screen_size[1]:
         field_pos[1] += screen_size[1]
-        player.rect.y -= screen_size[1]
+        player.move_entity(0, -screen_size[1])
         for room in rooms:
             room.move(0, screen_size[1] * -1)
 
     elif current_player_pos[1] <= 0:
         field_pos[1] -= screen_size[1]
-        player.rect.y += screen_size[1]
+        player.move_entity(0, screen_size[1])
         for room in rooms:
             room.move(0, screen_size[1])
 
@@ -102,14 +102,13 @@ while running:
         for roomneighbour in rooms:
             if roomneighbour.position in neighbours_pos:
                 render_queue.append(roomneighbour)
-    player.update(render_queue, clock.tick(60))
+    player.update(render_queue, game_tickrate.tick(FPS))
 
     screen.fill(pygame.Color(0, 0, 0))
     for render_room in render_queue:
         render_room.spritegroup.draw(screen)
         render_room.collisionsprites.draw(screen)
 
-    pygame.draw.rect(screen, (255, 0, 0), player.hitbox)
     entity_group.draw(screen)
 
     for render_room in render_queue:
