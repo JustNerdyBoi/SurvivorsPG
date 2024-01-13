@@ -92,8 +92,7 @@ class AnimatedTexture:
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, group, texture, coordinates, hitbox_rect, idle_animation=None, movement_animation=None,
-                 max_hp=100, max_speed=1, regen=0, collision=True):
+    def __init__(self, group, texture, coordinates, hitbox_rect, max_speed=1, collision=True):
         super().__init__(group)
         self.image = texture
         self.position_on_map = list(coordinates)
@@ -107,32 +106,13 @@ class Entity(pygame.sprite.Sprite):
         self.hitbox.rect.x += self.rect.x + hb_x_pos
         self.hitbox.rect.y += self.rect.y + hb_y_pos
 
-        self.max_hp = max_hp
-        self.hp = max_hp
-        self.regen = regen
-
         self.speed_x, self.speed_y = (0, 0)
         self.max_speed = max_speed
         self.acceleration_x, self.acceleration_y = (0, 0)
         self.friction = 0.1
         self.speed_coefficient = 0.15
         self.collisionable = collision
-
-        self.animation_clock = pygame.time.Clock()
-        self.animation_clock_current = 0
         self.positive_x_facing = True
-        self.current_animation_stage = 0
-
-        if idle_animation:
-            self.idle_animation = idle_animation
-        else:
-            self.idle_animation = AnimatedTexture([texture], 10)
-        self.current_animation = self.idle_animation
-
-        if movement_animation:
-            self.movement_animation = movement_animation
-        else:
-            self.movement_animation = AnimatedTexture([texture], 10)
 
     def move_entity(self, x, y):
         self.rect.x += x
@@ -140,10 +120,13 @@ class Entity(pygame.sprite.Sprite):
         self.rect.y += y
         self.hitbox.rect.y += y
 
-    def update(self, collisiongroups, time_from_prev_frame):
-        if self.regen > 0 and self.hp < self.max_hp:
-            self.hp += self.regen
+    def in_movement(self):
+        pass
 
+    def stable(self):
+        pass
+
+    def update(self, collisiongroups, time_from_prev_frame):
         if self.speed_x != 0 or self.acceleration_x != 0:
             if abs(self.speed_x + self.acceleration_x) <= self.max_speed:
                 self.speed_x += self.acceleration_x
@@ -194,13 +177,37 @@ class Entity(pygame.sprite.Sprite):
                 self.rect.y += movement_y
                 self.position_on_map[1] += movement_y
 
-        self.animation_clock_current += self.animation_clock.tick()
-
         if abs(self.speed_y) >= self.max_speed / 2 or abs(self.speed_x) >= self.max_speed / 2:
-            self.current_animation = self.movement_animation
-        elif self.current_animation != self.idle_animation:
-            self.current_animation = self.idle_animation
+            self.in_movement()
+        else:
+            self.stable()
 
+
+class Mob(Entity):
+    def __init__(self, group, texture, coordinates, hitbox_rect, idle_animation, movement_animation, max_speed=1,
+                 collision=True, max_hp=100, regen=10):
+        super().__init__(group, texture, coordinates, hitbox_rect, max_speed, collision)
+        self.max_hp = max_hp
+        self.hp = max_hp
+        self.regen = regen
+
+        self.animation_clock = pygame.time.Clock()
+        self.animation_clock_current = 0
+        self.current_animation_stage = 0
+
+        if idle_animation:
+            self.idle_animation = idle_animation
+        else:
+            self.idle_animation = AnimatedTexture([texture], 10)
+        self.current_animation = self.idle_animation
+
+        if movement_animation:
+            self.movement_animation = movement_animation
+        else:
+            self.movement_animation = AnimatedTexture([texture], 10)
+
+    def animation_update(self):
+        self.animation_clock_current += self.animation_clock.tick()
         if self.animation_clock_current >= self.current_animation.frame_time > 0:
             self.animation_clock_current = 0
             if self.current_animation_stage < self.current_animation.max_frame:
@@ -209,6 +216,14 @@ class Entity(pygame.sprite.Sprite):
                 self.current_animation_stage = 0
             self.image = pygame.transform.flip(self.current_animation.images[self.current_animation_stage],
                                                not self.positive_x_facing, False)
+
+    def in_movement(self):
+        self.current_animation = self.movement_animation
+
+    def stable(self):
+        if self.current_animation != self.idle_animation:
+            self.current_animation = self.idle_animation
+            self.animation_clock_current = self.current_animation.frame_time
 
 
 class Hitbox(pygame.sprite.Sprite):

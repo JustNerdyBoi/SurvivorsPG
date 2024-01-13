@@ -26,9 +26,9 @@ run_image_list = []
 for i in range(5):
     run_image_list.append(core.load_image('player_sprites', f'run_{i}.png'))
 
-player = core.Entity(entity_group, core.load_image('player_sprites', 'idle_0.png'), (100, 100),
-                     (17, 9, 14, 26), core.AnimatedTexture(idle_image_list, 250),
-                     core.AnimatedTexture(run_image_list, 70))
+player = core.Mob(entity_group, core.load_image('player_sprites', 'idle_0.png'), (100, 100),
+                  (17, 9, 14, 26), core.AnimatedTexture(idle_image_list, 250),
+                  core.AnimatedTexture(run_image_list, 70))
 
 game_tickrate = pygame.time.Clock()
 current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
@@ -95,8 +95,10 @@ while running:
 
     current_player_pos = (player.rect.x, player.rect.y)
     current_room_pos = (
-        round((current_player_pos[1] + field_pos[1] + player.rect.size[0] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
-        round((current_player_pos[0] + field_pos[0] + player.rect.size[1] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
+        round((current_player_pos[1] + field_pos[1] + player.rect.size[
+            0] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
+        round((current_player_pos[0] + field_pos[0] + player.rect.size[
+            1] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
 
     mouse_relative_coords = (180 / math.pi) * -math.atan2(pygame.mouse.get_pos()[1] - player.rect.y,
                                                           pygame.mouse.get_pos()[0] - player.rect.x)
@@ -112,6 +114,7 @@ while running:
             if roomneighbour.position in neighbours_pos:
                 render_queue.append(roomneighbour)
     player.update(render_queue, game_tickrate.tick(FPS))
+    player.animation_update()
 
     screen.fill(pygame.Color(0, 0, 0))
     for render_room in render_queue:
