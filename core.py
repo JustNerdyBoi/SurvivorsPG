@@ -1,6 +1,9 @@
+import random
+
 import pygame
 import sys
 import os
+import math
 
 import generation
 
@@ -92,10 +95,9 @@ class AnimatedTexture:
 
 
 class Entity(pygame.sprite.Sprite):
-    def __init__(self, group, texture, coordinates, hitbox_rect, max_speed=1, collision=True):
+    def __init__(self, group, texture, coordinates, hitbox_rect, max_speed=1, collision=True, friction=0.1):
         super().__init__(group)
         self.image = texture
-        self.position_on_map = list(coordinates)
 
         self.rect = self.image.get_rect()
         self.rect.x = coordinates[0]
@@ -106,13 +108,17 @@ class Entity(pygame.sprite.Sprite):
         self.hitbox.rect.x += self.rect.x + hb_x_pos
         self.hitbox.rect.y += self.rect.y + hb_y_pos
 
+        self.position_on_map = [self.hitbox.rect.x + self.hitbox.rect.size[0] // 2,
+                                self.hitbox.rect.y + self.hitbox.rect.size[1] // 2]
+
         self.speed_x, self.speed_y = (0, 0)
         self.max_speed = max_speed
         self.acceleration_x, self.acceleration_y = (0, 0)
-        self.friction = 0.1
+        self.friction = friction
         self.speed_coefficient = 0.15
         self.collisionable = collision
-        self.positive_x_facing = True
+        self.movement_x = 0
+        self.movement_y = 0
 
     def move_entity(self, x, y):
         self.rect.x += x
@@ -126,6 +132,9 @@ class Entity(pygame.sprite.Sprite):
     def stable(self):
         pass
 
+    def on_collision(self):
+        pass
+
     def update(self, collisiongroups, time_from_prev_frame):
         if self.speed_x != 0 or self.acceleration_x != 0:
             if abs(self.speed_x + self.acceleration_x) <= self.max_speed:
@@ -136,23 +145,21 @@ class Entity(pygame.sprite.Sprite):
                     self.speed_x -= pre_friction_result
                 else:
                     self.speed_x = 0
+            self.acceleration_x = 0
 
             pre_x = self.hitbox.rect.x
-            movement_x = round(self.speed_x * time_from_prev_frame * self.speed_coefficient)
-            self.hitbox.rect.x += movement_x
+            self.movement_x = round(self.speed_x * time_from_prev_frame * self.speed_coefficient)
+            self.hitbox.rect.x += self.movement_x
             if self.collisionable:
                 for collisiongroup in collisiongroups:
                     if pygame.sprite.spritecollide(self.hitbox, collisiongroup.collisionsprites, False):
                         self.speed_x = 0
                         self.hitbox.rect.x = pre_x
+                        self.on_collision()
                         break
             if self.hitbox.rect.x != pre_x:
-                self.rect.x += movement_x
-                self.position_on_map[0] += movement_x
-                if movement_x < 0 and self.positive_x_facing:
-                    self.positive_x_facing = False
-                elif movement_x > 0 and not self.positive_x_facing:
-                    self.positive_x_facing = True
+                self.rect.x += self.movement_x
+                self.position_on_map[0] += self.movement_x
 
         if self.speed_y != 0 or self.acceleration_y != 0:
             if abs(self.speed_y + self.acceleration_y) <= self.max_speed:
@@ -163,37 +170,44 @@ class Entity(pygame.sprite.Sprite):
                     self.speed_y -= pre_friction_result
                 else:
                     self.speed_y = 0
+            self.acceleration_y = 0
 
             pre_y = self.hitbox.rect.y
-            movement_y = round(self.speed_y * time_from_prev_frame * self.speed_coefficient)
-            self.hitbox.rect.y += movement_y
+            self.movement_y = round(self.speed_y * time_from_prev_frame * self.speed_coefficient)
+            self.hitbox.rect.y += self.movement_y
             if self.collisionable:
                 for collisiongroup in collisiongroups:
                     if pygame.sprite.spritecollide(self.hitbox, collisiongroup.collisionsprites, False):
                         self.speed_y = 0
                         self.hitbox.rect.y = pre_y
+                        self.on_collision()
                         break
             if self.hitbox.rect.y != pre_y:
-                self.rect.y += movement_y
-                self.position_on_map[1] += movement_y
+                self.rect.y += self.movement_y
+                self.position_on_map[1] += self.movement_y
 
         if abs(self.speed_y) >= self.max_speed / 2 or abs(self.speed_x) >= self.max_speed / 2:
             self.in_movement()
-        else:
+        elif not self.speed_x and not self.speed_y:
             self.stable()
 
 
 class Mob(Entity):
-    def __init__(self, group, texture, coordinates, hitbox_rect, idle_animation, movement_animation, max_speed=1,
-                 collision=True, max_hp=100, regen=10):
-        super().__init__(group, texture, coordinates, hitbox_rect, max_speed, collision)
+    def __init__(self, group, texture, coordinates, hitbox_rect, idle_animation, movement_animation, ranger=True,
+                 melee=False, max_speed=1,
+                 collision=True, friction=0.1, max_hp=100, regen=10):
+        super().__init__(group, texture, coordinates, hitbox_rect, max_speed, collision, friction)
         self.max_hp = max_hp
         self.hp = max_hp
         self.regen = regen
+        self.ranger = ranger
+        self.melee = melee
 
         self.animation_clock = pygame.time.Clock()
         self.animation_clock_current = 0
         self.current_animation_stage = 0
+        self.positive_x_facing = True
+        self.positive_y_facing = False
 
         if idle_animation:
             self.idle_animation = idle_animation
@@ -207,6 +221,7 @@ class Mob(Entity):
             self.movement_animation = AnimatedTexture([texture], 10)
 
     def animation_update(self):
+        self.facing_checking()
         self.animation_clock_current += self.animation_clock.tick()
         if self.animation_clock_current >= self.current_animation.frame_time > 0:
             self.animation_clock_current = 0
@@ -217,6 +232,17 @@ class Mob(Entity):
             self.image = pygame.transform.flip(self.current_animation.images[self.current_animation_stage],
                                                not self.positive_x_facing, False)
 
+    def facing_checking(self):
+        if self.movement_x < 0 and self.positive_x_facing:
+            self.positive_x_facing = False
+        elif self.movement_x > 0 and not self.positive_x_facing:
+            self.positive_x_facing = True
+
+        if self.movement_y < 0 and self.positive_y_facing:
+            self.positive_y_facing = False
+        elif self.movement_y > 0 and not self.positive_y_facing:
+            self.positive_y_facing = True
+
     def in_movement(self):
         self.current_animation = self.movement_animation
 
@@ -224,6 +250,52 @@ class Mob(Entity):
         if self.current_animation != self.idle_animation:
             self.current_animation = self.idle_animation
             self.animation_clock_current = self.current_animation.frame_time
+
+    def shot(self, projectile_group, target_coords, texture, damage, base_acceleration, inaccuracy=3):
+        if self.ranger:
+            projectile_angle = (180 / math.pi) * -math.atan2(target_coords[1] - self.position_on_map[1],
+                                                             target_coords[0] - self.position_on_map[0])
+            projectile_angle += random.uniform(-inaccuracy * 360 / 200, inaccuracy * 360 / 200)
+            projectile = Projectile(projectile_group, texture, (self.hitbox.rect.x, self.hitbox.rect.y),
+                                    (0, 0, texture.get_size()[0], texture.get_size()[1]), damage)
+            projectile.image = pygame.transform.rotate(texture, projectile_angle)
+            projectile.acceleration_x = base_acceleration * math.sin(math.radians(projectile_angle + 90)) + self.speed_x
+            projectile.acceleration_y = base_acceleration * math.cos(math.radians(projectile_angle + 90)) + self.speed_y
+
+
+class Player(Mob):
+    def facing_checking(self):
+        updated_facing = False
+        if self.current_animation != self.movement_animation:
+            mouse_pos = pygame.mouse.get_pos()
+            if mouse_pos[0] - self.position_on_map[0] < 0 and self.positive_x_facing:
+                self.positive_x_facing = False
+                updated_facing = True
+            elif mouse_pos[0] - self.position_on_map[0] > 0 and not self.positive_x_facing:
+                self.positive_x_facing = True
+                updated_facing = True
+
+            if mouse_pos[1] - self.position_on_map[1] < 0 and self.positive_y_facing:
+                self.positive_y_facing = False
+                updated_facing = True
+            elif mouse_pos[1] - self.position_on_map[1] > 0 and not self.positive_y_facing:
+                self.positive_y_facing = True
+                updated_facing = True
+        else:
+            super().facing_checking()
+
+        if updated_facing:
+            self.animation_clock_current = self.current_animation.frame_time
+
+
+class Projectile(Entity):
+    def __init__(self, group, texture, coordinates, hitbox_rect, damage, max_speed=15, friction=0.01, collision=True):
+        super().__init__(group, texture, coordinates, hitbox_rect, max_speed, collision, friction)
+        self.damage = damage
+
+    def on_collision(self):
+        self.speed_x = 0
+        self.speed_y = 0
 
 
 class Hitbox(pygame.sprite.Sprite):

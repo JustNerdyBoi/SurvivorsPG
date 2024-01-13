@@ -1,9 +1,9 @@
 import pygame
 import core
 import generation
-import math
 
 FULLSCREEN = False
+DEBUG = False
 FPS = 60  # changed for FPS
 
 if FULLSCREEN:
@@ -18,6 +18,7 @@ field = generation.map_filling(rooms)
 rooms = generation.apply_sprites(rooms, field)
 
 entity_group = pygame.sprite.Group()
+projectile_group = pygame.sprite.Group()
 
 idle_image_list = []
 for i in range(3):
@@ -26,9 +27,11 @@ run_image_list = []
 for i in range(5):
     run_image_list.append(core.load_image('player_sprites', f'run_{i}.png'))
 
-player = core.Mob(entity_group, core.load_image('player_sprites', 'idle_0.png'), (100, 100),
-                  (17, 9, 14, 26), core.AnimatedTexture(idle_image_list, 250),
-                  core.AnimatedTexture(run_image_list, 70))
+arrow_image = core.load_image('combat', 'arrow.png')
+
+player = core.Player(entity_group, core.load_image('player_sprites', 'idle_0.png'), (100, 100),
+                     (17, 9, 14, 26), core.AnimatedTexture(idle_image_list, 250),
+                     core.AnimatedTexture(run_image_list, 70))
 
 game_tickrate = pygame.time.Clock()
 current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
@@ -42,7 +45,6 @@ move_y = 0
 move_x = 0
 
 while running:
-
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -64,6 +66,9 @@ while running:
                 move_x = 0
             elif event.key == pygame.K_d and move_x != -0.1:
                 move_x = 0
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            pos = (pygame.mouse.get_pos()[0] + field_pos[0], pygame.mouse.get_pos()[1] + field_pos[1])
+            player.shot(projectile_group, pos, arrow_image, 10, 8)
 
     player.acceleration_y = move_y
     player.acceleration_x = move_x
@@ -100,9 +105,6 @@ while running:
         round((current_player_pos[0] + field_pos[0] + player.rect.size[
             1] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
 
-    mouse_relative_coords = (180 / math.pi) * -math.atan2(pygame.mouse.get_pos()[1] - player.rect.y,
-                                                          pygame.mouse.get_pos()[0] - player.rect.x)
-
     if prev_room_pos != current_room_pos or render_queue == []:
         render_queue = []
         for room in rooms:
@@ -113,7 +115,11 @@ while running:
         for roomneighbour in rooms:
             if roomneighbour.position in neighbours_pos:
                 render_queue.append(roomneighbour)
-    player.update(render_queue, game_tickrate.tick(FPS))
+
+    current_tickrate = game_tickrate.tick(FPS)
+    player.update(render_queue, current_tickrate)
+    for projectile in projectile_group:
+        projectile.update(render_queue, current_tickrate)
     player.animation_update()
 
     screen.fill(pygame.Color(0, 0, 0))
@@ -121,9 +127,12 @@ while running:
         render_room.spritegroup.draw(screen)
         render_room.collisionsprites.draw(screen)
 
-    if True:  # DEBUG use True for hitboxes
+    if DEBUG:  # DEBUG use True for hitboxes
         for entity in entity_group:
             pygame.draw.rect(screen, (0, 255, 0), entity.hitbox)
+        for projectile in projectile_group:
+            pygame.draw.rect(screen, (255, 0, 0), projectile.hitbox)
+    projectile_group.draw(screen)
     entity_group.draw(screen)
 
     for render_room in render_queue:
