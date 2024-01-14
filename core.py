@@ -303,6 +303,7 @@ class Mob(Entity):
                     self.shot(self.get_target_coord(), self.projectile_image, self.inaccuracy)
 
             elif self.current_animation == self.death_animation:
+                self.on_death()
                 self.kill()
 
             else:
@@ -321,15 +322,30 @@ class Mob(Entity):
 
     def facing_checking(self):
         if not self.affected_by_impulse:
-            if self.movement_x < 0 and self.positive_x_facing:
-                self.positive_x_facing = False
-                self.attack_hitbox.rect.x -= self.attack_hitbox.rect.size[0]
-            elif self.movement_x > 0 and not self.positive_x_facing:
-                self.positive_x_facing = True
-                self.attack_hitbox.rect.x += self.attack_hitbox.rect.size[0]
+            updated_facing = False
+            if self.current_animation != self.movement_animation:
+                if (self.get_target_coord()[0] - self.hitbox.rect.x - self.hitbox.rect.size[0] // 2 < 0
+                        and self.positive_x_facing):
+                    self.positive_x_facing = False
+                    self.attack_hitbox.rect.x -= self.attack_hitbox.rect.size[0]
+                    updated_facing = True
+                elif (self.get_target_coord()[0] - self.hitbox.rect.x - self.hitbox.rect.size[0] // 2 > 0
+                      and not self.positive_x_facing):
+                    self.positive_x_facing = True
+                    self.attack_hitbox.rect.x += self.attack_hitbox.rect.size[0]
+                    updated_facing = True
+            else:
+                if self.movement_x < 0 and self.positive_x_facing:
+                    self.positive_x_facing = False
+                    self.attack_hitbox.rect.x -= self.attack_hitbox.rect.size[0]
+                elif self.movement_x > 0 and not self.positive_x_facing:
+                    self.positive_x_facing = True
+                    self.attack_hitbox.rect.x += self.attack_hitbox.rect.size[0]
+            if updated_facing:
+                self.animation_clock_current = self.current_animation.frame_time
 
     def in_movement(self):
-        if self.current_animation not in (self.melee_animation, self.death_animation):
+        if self.current_animation not in (self.melee_animation, self.death_animation, self.aiming_animation):
             self.current_animation = self.movement_animation
 
     def stable(self):
@@ -352,7 +368,7 @@ class Mob(Entity):
                                                              target_coords[0] - self.position_on_map[0])
             projectile_angle += random.uniform(-inaccuracy * 360 / 200, inaccuracy * 360 / 200)
             projectile = Projectile(self.projectile_group, texture, (self.hitbox.rect.x, self.hitbox.rect.y),
-                                    (4, 4, texture.get_size()[0] - 4, texture.get_size()[1] - 4), self.ranger_dmg,
+                                    (8, 8, texture.get_size()[0] - 8, texture.get_size()[1] - 8), self.ranger_dmg,
                                     self.knockback, self)
             projectile.image = pygame.transform.rotate(texture, projectile_angle)
             projectile.impulse = [base_acceleration * math.sin(math.radians(projectile_angle + 90)) + self.speed_x,
@@ -381,28 +397,16 @@ class Mob(Entity):
         self.attack_hitbox.rect.x += x
         self.attack_hitbox.rect.y += y
 
+    def on_death(self):
+        pass
+
 
 class Player(Mob):
-    def facing_checking(self):
-        updated_facing = False
-        if self.current_animation != self.movement_animation:
-            mouse_pos = pygame.mouse.get_pos()
-            if mouse_pos[0] - self.hitbox.rect.x - self.hitbox.rect.size[0] // 2 < 0 and self.positive_x_facing:
-                self.positive_x_facing = False
-                self.attack_hitbox.rect.x -= self.attack_hitbox.rect.size[0]
-                updated_facing = True
-            elif mouse_pos[0] - self.hitbox.rect.x - self.hitbox.rect.size[0] // 2 > 0 and not self.positive_x_facing:
-                self.positive_x_facing = True
-                self.attack_hitbox.rect.x += self.attack_hitbox.rect.size[0]
-                updated_facing = True
-        else:
-            super().facing_checking()
-
-        if updated_facing:
-            self.animation_clock_current = self.current_animation.frame_time
-
     def get_target_coord(self):
         return pygame.mouse.get_pos()[0] + self.manualy_moved[0], pygame.mouse.get_pos()[1] + self.manualy_moved[1]
+
+    def on_death(self):
+        print('хахахаха, лузер, ты сдох. для себя - добавить тут дроп лута')
 
 
 class Projectile(Entity):
