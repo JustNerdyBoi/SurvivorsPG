@@ -234,7 +234,7 @@ class Mob(Entity):
     def __init__(self, group, projectile_group, texture, coordinates,
                  hitbox_rect, attack_hitbox_rect,
                  idle_animation, movement_animation, aiming_animation, melee_animation, death_animation,
-                 ranger_damage=0, projectile_image=False,
+                 ranger_damage=0, projectile_image=False, knockback=100, inaccuracy=0, arrows_per_shot=1,
                  melee_damage=0, melee_attack_stages=False,
                  max_speed=1,
                  collision=True, friction=0.1, max_hp=100, regen=10):
@@ -267,6 +267,9 @@ class Mob(Entity):
         self.current_animation = self.idle_animation
 
         self.ranger_dmg = ranger_damage
+        self.knockback = knockback
+        self.inaccuracy = inaccuracy
+        self.arrows_per_shot = arrows_per_shot
         self.projectile_group = projectile_group
         if not projectile_image:
             self.projectile_image = load_image('combat', 'arrow.png')
@@ -279,10 +282,13 @@ class Mob(Entity):
         else:
             self.melee_attack_stages = [self.melee_animation.max_frame]
 
+        self.target_cord = [0, 0]
+
     def animation_update(self):
         self.facing_checking()
-        if self.hp <= 0:
+        if self.hp <= 0 and self.current_animation != self.death_animation:
             self.current_animation = self.death_animation
+            self.current_animation_stage = 0
 
         self.animation_clock_current += self.animation_clock.tick()
         if self.animation_clock_current >= self.current_animation.frame_time > 0:
@@ -293,7 +299,8 @@ class Mob(Entity):
             elif self.current_animation == self.aiming_animation:
                 self.current_animation = self.idle_animation
                 self.current_animation_stage = 0
-                self.shot(self.get_target_coord(), self.projectile_image)
+                for _ in range(self.arrows_per_shot):
+                    self.shot(self.get_target_coord(), self.projectile_image, self.inaccuracy)
 
             elif self.current_animation == self.death_animation:
                 self.kill()
@@ -322,7 +329,7 @@ class Mob(Entity):
                 self.attack_hitbox.rect.x += self.attack_hitbox.rect.size[0]
 
     def in_movement(self):
-        if self.current_animation != self.melee_animation:
+        if self.current_animation not in (self.melee_animation, self.death_animation):
             self.current_animation = self.movement_animation
 
     def stable(self):
@@ -337,15 +344,16 @@ class Mob(Entity):
         self.attack_hitbox.rect.y += y
 
     def get_target_coord(self):
-        pass
+        return self.target_cord
 
-    def shot(self, target_coords, texture, base_acceleration=8, inaccuracy=1):
+    def shot(self, target_coords, texture, inaccuracy=1, base_acceleration=8):
         if self.ranger_dmg:
             projectile_angle = (180 / math.pi) * -math.atan2(target_coords[1] - self.position_on_map[1],
                                                              target_coords[0] - self.position_on_map[0])
             projectile_angle += random.uniform(-inaccuracy * 360 / 200, inaccuracy * 360 / 200)
             projectile = Projectile(self.projectile_group, texture, (self.hitbox.rect.x, self.hitbox.rect.y),
-                                    (4, 4, texture.get_size()[0] - 4, texture.get_size()[1] - 4), self.ranger_dmg, self)
+                                    (4, 4, texture.get_size()[0] - 4, texture.get_size()[1] - 4), self.ranger_dmg,
+                                    self.knockback, self)
             projectile.image = pygame.transform.rotate(texture, projectile_angle)
             projectile.impulse = [base_acceleration * math.sin(math.radians(projectile_angle + 90)) + self.speed_x,
                                   base_acceleration * math.cos(math.radians(projectile_angle + 90)) + self.speed_y]
@@ -398,25 +406,25 @@ class Player(Mob):
 
 
 class Projectile(Entity):
-    def __init__(self, group, texture, coordinates, hitbox_rect, damage, shooter, max_speed=15, friction=0.01,
-                 collision=True):
+    def __init__(self, group, texture, coordinates, hitbox_rect, damage, knockback, shooter, max_speed=15,
+                 friction=0.01, collision=True):
         super().__init__(group, texture, coordinates, hitbox_rect, max_speed, collision, friction)
         self.damage = damage
         self.shooter = shooter
         self.target_group = shooter.groups()[0]
         self.shooting_pos = shooter.position_on_map
+        self.knockback = knockback
 
     def on_collision(self):
         self.speed_x = 0
         self.speed_y = 0
-        self.kill()
 
     def update(self, collisiongroups, time_from_prev_frame):
         super().update(collisiongroups, time_from_prev_frame)
         for collided_entity in pygame.sprite.spritecollide(self, self.target_group, False):
             if collided_entity != self.shooter and (self.speed_x or self.speed_y):
                 collided_entity.hp -= self.damage
-                collided_entity.impulse = [self.speed_x, self.speed_y]
+                collided_entity.impulse = [self.speed_x * self.knockback / 100, self.speed_y * self.knockback / 100]
                 self.on_collision()
 
 

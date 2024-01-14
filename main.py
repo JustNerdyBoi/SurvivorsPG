@@ -26,18 +26,18 @@ player = core.Player(entity_group, projectile_group, core.load_image('player_spr
                      core.load_animation('player_sprites', 'run', 6, 70),
                      core.load_animation('player_sprites', 'bow', 9, 120),
                      core.load_animation('player_sprites', 'attack', 10, 100),
-                     core.load_animation('player_sprites', 'death', 7, 1000),
-                     50, False,
+                     core.load_animation('player_sprites', 'death', 7, 250),
+                     50, False, 100, 3, 10,
                      50, [1, 7])
 
 dummy = core.Mob(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (100, 100),
                (17, 9, 14, 26), (25, -10, 50, 50),
                core.load_animation('player_sprites', 'idle', 3, 400),
                core.load_animation('player_sprites', 'run', 6, 70),
-               core.load_animation('player_sprites', 'bow', 9, 120),
+               core.load_animation('player_sprites', 'bow', 9, 1),
                core.load_animation('player_sprites', 'attack', 10, 100),
                core.load_animation('player_sprites', 'death', 7, 250),
-               10, False,
+               10, False, 25, 15, 1,
                10, [1, 7])
 
 game_tickrate = pygame.time.Clock()
@@ -45,6 +45,7 @@ current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
 
 current_room_pos = (0, 0)
 prev_room_pos = (0, 0)
+prev_room = []
 field_pos = [0, 0]
 render_queue = []
 running = True
@@ -73,7 +74,8 @@ while running:
                 move_x = 0
             elif event.key == pygame.K_d and move_x != -0.1:
                 move_x = 0
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if (event.type == pygame.MOUSEBUTTONDOWN and player.current_animation != player.death_animation
+                and not player.affected_by_impulse):
             player.speed_y = 0
             player.speed_x = 0
             player.current_animation_stage = 0
@@ -83,7 +85,7 @@ while running:
                 player.current_animation = player.aiming_animation
         if event.type == pygame.MOUSEBUTTONUP:
             player.current_animation = player.idle_animation
-    if player.current_animation not in (player.aiming_animation, player.melee_animation):
+    if player.current_animation not in (player.aiming_animation, player.melee_animation, player.death_animation):
         player.acceleration_y = move_y
         player.acceleration_x = move_x
 
@@ -121,14 +123,17 @@ while running:
 
     if prev_room_pos != current_room_pos or render_queue == []:
 
-        projectile_group.empty()
-
         render_queue = []
         for room in rooms:
             if current_room_pos in room.covering_squares:
                 render_queue.append(room)
 
-        neighbours_pos = render_queue[0].roomneighbours
+        current_room = render_queue[0]
+        if current_room != prev_room:
+            projectile_group.empty()
+        prev_room = current_room
+
+        neighbours_pos = current_room.roomneighbours
         for roomneighbour in rooms:
             if roomneighbour.position in neighbours_pos:
                 render_queue.append(roomneighbour)
@@ -136,7 +141,6 @@ while running:
     current_tickrate = game_tickrate.tick(FPS)
     entity_group.tick_update(render_queue, current_tickrate)
     projectile_group.tick_update(render_queue, current_tickrate)
-
 
     screen.fill(pygame.Color(0, 0, 0))
     for render_room in render_queue:
@@ -160,6 +164,9 @@ while running:
         if current_room_pos not in render_room.covering_squares:
             render_room.render_mist(screen, field_pos)
 
+    dummy.target_cord = player.position_on_map
+    if dummy.current_animation not in (dummy.aiming_animation, dummy.death_animation):
+        dummy.current_animation = dummy.aiming_animation
     prev_room_pos = current_room_pos
     current_room_pos = (0, 0)
     pygame.display.flip()
