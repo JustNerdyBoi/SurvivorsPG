@@ -406,7 +406,7 @@ class Player(Mob):
         return pygame.mouse.get_pos()[0] + self.manualy_moved[0], pygame.mouse.get_pos()[1] + self.manualy_moved[1]
 
     def on_death(self):
-        print('хахахаха, лузер, ты сдох. для себя - добавить тут дроп лута')
+        self.loser = True
 
 
 class Projectile(Entity):
