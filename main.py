@@ -17,21 +17,28 @@ rooms = generation.create_board()
 field = generation.map_filling(rooms)
 rooms = generation.apply_sprites(rooms, field)
 
-entity_group = pygame.sprite.Group()
-projectile_group = pygame.sprite.Group()
+entity_group = core.EntityGroup()
+projectile_group = core.EntityGroup()
 
-idle_image_list = []
-for i in range(3):
-    idle_image_list.append(core.load_image('player_sprites', f'idle_{i}.png'))
-run_image_list = []
-for i in range(5):
-    run_image_list.append(core.load_image('player_sprites', f'run_{i}.png'))
+player = core.Player(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (256, 256),
+                     (17, 9, 14, 26), (25, -10, 30, 60),
+                     core.load_animation('player_sprites', 'idle', 3, 200),
+                     core.load_animation('player_sprites', 'run', 6, 70),
+                     core.load_animation('player_sprites', 'bow', 9, 120),
+                     core.load_animation('player_sprites', 'attack', 10, 100),
+                     core.load_animation('player_sprites', 'death', 7, 1000),
+                     50, False,
+                     50, [1, 7])
 
-arrow_image = core.load_image('combat', 'arrow.png')
-
-player = core.Player(entity_group, core.load_image('player_sprites', 'idle_0.png'), (100, 100),
-                     (17, 9, 14, 26), core.AnimatedTexture(idle_image_list, 250),
-                     core.AnimatedTexture(run_image_list, 70))
+dummy = core.Mob(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (100, 100),
+               (17, 9, 14, 26), (25, -10, 50, 50),
+               core.load_animation('player_sprites', 'idle', 3, 400),
+               core.load_animation('player_sprites', 'run', 6, 70),
+               core.load_animation('player_sprites', 'bow', 9, 120),
+               core.load_animation('player_sprites', 'attack', 10, 100),
+               core.load_animation('player_sprites', 'death', 7, 250),
+               10, False,
+               10, [1, 7])
 
 game_tickrate = pygame.time.Clock()
 current_player_pos = (screen_size[0] // 2, screen_size[1] // 2)
@@ -67,34 +74,41 @@ while running:
             elif event.key == pygame.K_d and move_x != -0.1:
                 move_x = 0
         if event.type == pygame.MOUSEBUTTONDOWN:
-            pos = (pygame.mouse.get_pos()[0] + field_pos[0], pygame.mouse.get_pos()[1] + field_pos[1])
-            player.shot(projectile_group, pos, arrow_image, 10, 8)
-
-    player.acceleration_y = move_y
-    player.acceleration_x = move_x
+            player.speed_y = 0
+            player.speed_x = 0
+            player.current_animation_stage = 0
+            if event.button == 1:
+                player.current_animation = player.melee_animation
+            elif event.button == 3:
+                player.current_animation = player.aiming_animation
+        if event.type == pygame.MOUSEBUTTONUP:
+            player.current_animation = player.idle_animation
+    if player.current_animation not in (player.aiming_animation, player.melee_animation):
+        player.acceleration_y = move_y
+        player.acceleration_x = move_x
 
     current_player_pos = (player.rect.x, player.rect.y)
 
     if current_player_pos[0] >= screen_size[0]:
         field_pos[0] += screen_size[0]
-        player.move_entity(-screen_size[0], 0)
+        entity_group.move_group(-screen_size[0], 0)
         for room in rooms:
             room.move(screen_size[0] * -1, 0)
     elif current_player_pos[0] <= 0:
         field_pos[0] -= screen_size[0]
-        player.move_entity(screen_size[0], 0)
+        entity_group.move_group(screen_size[0], 0)
         for room in rooms:
             room.move(screen_size[0], 0)
 
     if current_player_pos[1] >= screen_size[1]:
         field_pos[1] += screen_size[1]
-        player.move_entity(0, -screen_size[1])
+        entity_group.move_group(0, -screen_size[1])
         for room in rooms:
             room.move(0, screen_size[1] * -1)
 
     elif current_player_pos[1] <= 0:
         field_pos[1] -= screen_size[1]
-        player.move_entity(0, screen_size[1])
+        entity_group.move_group(0, screen_size[1])
         for room in rooms:
             room.move(0, screen_size[1])
 
@@ -106,6 +120,9 @@ while running:
             1] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
 
     if prev_room_pos != current_room_pos or render_queue == []:
+
+        projectile_group.empty()
+
         render_queue = []
         for room in rooms:
             if current_room_pos in room.covering_squares:
@@ -117,10 +134,9 @@ while running:
                 render_queue.append(roomneighbour)
 
     current_tickrate = game_tickrate.tick(FPS)
-    player.update(render_queue, current_tickrate)
-    for projectile in projectile_group:
-        projectile.update(render_queue, current_tickrate)
-    player.animation_update()
+    entity_group.tick_update(render_queue, current_tickrate)
+    projectile_group.tick_update(render_queue, current_tickrate)
+
 
     screen.fill(pygame.Color(0, 0, 0))
     for render_room in render_queue:
@@ -129,9 +145,11 @@ while running:
 
     if DEBUG:  # DEBUG use True for hitboxes
         for entity in entity_group:
+            pygame.draw.rect(screen, (0, 0, 225), entity.attack_hitbox)
             pygame.draw.rect(screen, (0, 255, 0), entity.hitbox)
         for projectile in projectile_group:
             pygame.draw.rect(screen, (255, 0, 0), projectile.hitbox)
+
     projectile_group.draw(screen)
     entity_group.draw(screen)
 
