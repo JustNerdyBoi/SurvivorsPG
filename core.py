@@ -102,9 +102,9 @@ class AnimatedTexture:
 
 
 class EntityGroup(pygame.sprite.Group):
-    def move_group(self, x, y):
+    def map_flip_move(self, x, y):
         for entity in self:
-            entity.hard_movement(x, y)
+            entity.hard_movement(x, y, True)
 
     def tick_update(self, collision_group, tickrate):
         for entity in self:
@@ -119,16 +119,18 @@ class Entity(pygame.sprite.Sprite):
         self.image = texture
 
         self.rect = self.image.get_rect()
-        self.rect.x = coordinates[0]
-        self.rect.y = coordinates[1]
+        self.rect.x = coordinates[0] - self.rect.size[0] // 2
+        self.rect.y = coordinates[1] - self.rect.size[1] // 2
+        self.safe_spawn = False
+        if len(coordinates) > 2 and coordinates[2]:
+            self.safe_spawn = True
 
         hb_x_pos, hb_y_pos, hb_x_size, hb_y_size = hitbox_rect
         self.hitbox = Hitbox(pygame.Surface((hb_x_size, hb_y_size), pygame.SRCALPHA))
         self.hitbox.rect.x += self.rect.x + hb_x_pos
         self.hitbox.rect.y += self.rect.y + hb_y_pos
 
-        self.position_on_map = [self.hitbox.rect.x + self.hitbox.rect.size[0] // 2,
-                                self.hitbox.rect.y + self.hitbox.rect.size[1] // 2]
+        self.position_on_map = list(coordinates[0:2])
 
         self.speed_x, self.speed_y = (0, 0)
         self.max_speed = max_speed
@@ -141,15 +143,20 @@ class Entity(pygame.sprite.Sprite):
         self.impulse = [0, 0]
         self.affected_by_impulse = False
 
-        self.manualy_moved = [0, 0]
+        self.map_flipped = [0, 0]
 
-    def hard_movement(self, x, y):
+    def hard_movement(self, x, y, map_flipped=False):
         self.rect.x += x
         self.hitbox.rect.x += x
-        self.manualy_moved[0] -= x
+        self.position_on_map[0] += x
+
         self.rect.y += y
         self.hitbox.rect.y += y
-        self.manualy_moved[1] -= y
+        self.position_on_map[1] += y
+
+        if map_flipped:
+            self.map_flipped[0] -= x
+            self.map_flipped[1] -= y
 
     def in_movement(self):
         pass
@@ -167,6 +174,21 @@ class Entity(pygame.sprite.Sprite):
         self.position_on_map[1] += y
 
     def update(self, collisiongroups, time_from_prev_frame):
+        while self.safe_spawn:
+            self.safe_spawn = False
+            for collisiongroup in collisiongroups:
+                if pygame.sprite.spritecollide(self.hitbox, collisiongroup.collisionsprites, False):
+                    self.safe_spawn = True
+            if self.safe_spawn:
+                size_of_room = generation.SIZE_OF_ROOM * generation.SIZE_OF_TEXTURES
+                current_room_pos = (self.position_on_map[0] // size_of_room, self.position_on_map[1] // size_of_room)
+                new_position = (random.randint(current_room_pos[0] * size_of_room + generation.SIZE_OF_TEXTURES,
+                                               (current_room_pos[0] + 1) * size_of_room - generation.SIZE_OF_TEXTURES),
+                                random.randint(current_room_pos[1] * size_of_room + generation.SIZE_OF_TEXTURES,
+                                               (current_room_pos[1] + 1) * size_of_room - generation.SIZE_OF_TEXTURES))
+
+                self.hard_movement(new_position[0] - self.position_on_map[0], new_position[1] - self.position_on_map[1])
+
         if self.impulse[0] or self.impulse[1] or (self.affected_by_impulse and (self.speed_x or self.speed_y)):
             self.affected_by_impulse = True
             self.acceleration_x = 0
@@ -354,8 +376,8 @@ class Mob(Entity):
             self.current_animation = self.idle_animation
             self.animation_clock_current = self.current_animation.frame_time
 
-    def hard_movement(self, x, y):
-        super().hard_movement(x, y)
+    def hard_movement(self, x, y, map_flipped=False):
+        super().hard_movement(x, y, map_flipped)
         self.attack_hitbox.rect.x += x
         self.attack_hitbox.rect.y += y
 
@@ -403,10 +425,20 @@ class Mob(Entity):
 
 class Player(Mob):
     def get_target_coord(self):
-        return pygame.mouse.get_pos()[0] + self.manualy_moved[0], pygame.mouse.get_pos()[1] + self.manualy_moved[1]
+        return pygame.mouse.get_pos()[0] + self.map_flipped[0], pygame.mouse.get_pos()[1] + self.map_flipped[1]
 
     def on_death(self):
         self.loser = True
+
+    def melee_hit(self, group, damage):
+        super().melee_hit(group, damage)
+        for hitted_projectile in pygame.sprite.spritecollide(self.attack_hitbox, self.projectile_group, False):
+            hitted_projectile.speed_x *= -2
+            hitted_projectile.speed_y *= -2
+            hitted_projectile.shooter = self
+            hitted_projectile.image = pygame.transform.rotate(hitted_projectile.image, 180)
+            hitted_projectile.damage *= 2
+            hitted_projectile.knockback *= 2
 
 
 class Projectile(Entity):
@@ -426,7 +458,8 @@ class Projectile(Entity):
     def update(self, collisiongroups, time_from_prev_frame):
         super().update(collisiongroups, time_from_prev_frame)
         for collided_entity in pygame.sprite.spritecollide(self, self.target_group, False):
-            if collided_entity != self.shooter and (self.speed_x or self.speed_y):
+            if (collided_entity != self.shooter and (self.speed_x or self.speed_y)
+                    and pygame.sprite.collide_rect(self, collided_entity.hitbox)):
                 collided_entity.hp -= self.damage
                 collided_entity.impulse = [self.speed_x * self.knockback / 100, self.speed_y * self.knockback / 100]
                 self.on_collision()

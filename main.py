@@ -4,7 +4,7 @@ import generation
 
 FULLSCREEN = False
 STANDART_RESOLUTION = (2048, 1024)
-DEBUG = False
+DEBUG = True
 FPS = 60  # changed for FPS
 BACKGROUND_COLOR = (0, 0, 0)
 MAIN_COLOR = (255, 255, 255)
@@ -77,8 +77,8 @@ def game_process():
     entity_group = core.EntityGroup()
     projectile_group = core.EntityGroup()
 
-    player = core.Player(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (256, 256),
-                         (17, 9, 14, 26), (25, -10, 30, 60),
+    player = core.Player(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (0, 0, True),
+                         (17, 9, 14, 26), (25, -10, 60, 60),
                          core.load_animation('player_sprites', 'idle', 3, 200),
                          core.load_animation('player_sprites', 'run', 6, 70),
                          core.load_animation('player_sprites', 'bow', 9, 120),
@@ -87,14 +87,14 @@ def game_process():
                          50, False, 50, 0, 1,
                          50, [1, 7])
 
-    dummy = core.Mob(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (750, 750),
+    dummy = core.Mob(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (750, 750, True),
                      (17, 9, 14, 26), (25, -10, 30, 60),
                      core.load_animation('player_sprites', 'idle', 3, 200),
                      core.load_animation('player_sprites', 'run', 6, 70),
                      core.load_animation('player_sprites', 'bow', 9, 120),
                      core.load_animation('player_sprites', 'attack', 10, 100),
                      core.load_animation('player_sprites', 'death', 7, 250),
-                     30, False, 100, 3, 100,
+                     30, False, 20, 0, 1,
                      30, [1, 7])
 
     game_tickrate = pygame.time.Clock()
@@ -152,33 +152,30 @@ def game_process():
 
         if current_player_pos[0] >= screen_size[0]:
             field_pos[0] += screen_size[0]
-            entity_group.move_group(-screen_size[0], 0)
+            entity_group.map_flip_move(-screen_size[0], 0)
             for room in rooms:
                 room.move(screen_size[0] * -1, 0)
         elif current_player_pos[0] <= 0:
             field_pos[0] -= screen_size[0]
-            entity_group.move_group(screen_size[0], 0)
+            entity_group.map_flip_move(screen_size[0], 0)
             for room in rooms:
                 room.move(screen_size[0], 0)
 
         if current_player_pos[1] >= screen_size[1]:
             field_pos[1] += screen_size[1]
-            entity_group.move_group(0, -screen_size[1])
+            entity_group.map_flip_move(0, -screen_size[1])
             for room in rooms:
                 room.move(0, screen_size[1] * -1)
 
         elif current_player_pos[1] <= 0:
             field_pos[1] -= screen_size[1]
-            entity_group.move_group(0, screen_size[1])
+            entity_group.map_flip_move(0, screen_size[1])
             for room in rooms:
                 room.move(0, screen_size[1])
 
-        current_player_pos = (player.rect.x, player.rect.y)
         current_room_pos = (
-            round((current_player_pos[1] + field_pos[1] + player.rect.size[
-                0] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
-            round((current_player_pos[0] + field_pos[0] + player.rect.size[
-                1] / 2) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
+            round((player.position_on_map[1] + field_pos[1]) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5),
+            round((player.position_on_map[0] + field_pos[0]) / generation.SIZE_OF_ROOM / generation.SIZE_OF_TEXTURES - 0.5))
 
         if prev_room_pos != current_room_pos or render_queue == []:
 
