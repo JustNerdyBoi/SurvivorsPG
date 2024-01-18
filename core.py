@@ -148,15 +148,16 @@ class Entity(pygame.sprite.Sprite):
     def hard_movement(self, x, y, map_flipped=False):
         self.rect.x += x
         self.hitbox.rect.x += x
-        self.position_on_map[0] += x
 
         self.rect.y += y
         self.hitbox.rect.y += y
-        self.position_on_map[1] += y
 
         if map_flipped:
             self.map_flipped[0] -= x
             self.map_flipped[1] -= y
+        else:
+            self.position_on_map[0] += x
+            self.position_on_map[1] += y
 
     def in_movement(self):
         pass
@@ -346,12 +347,12 @@ class Mob(Entity):
         if not self.affected_by_impulse:
             updated_facing = False
             if self.current_animation != self.movement_animation:
-                if (self.get_target_coord()[0] - self.hitbox.rect.x - self.hitbox.rect.size[0] // 2 < 0
+                if (self.get_target_coord()[0] - self.position_on_map[0] < 0
                         and self.positive_x_facing):
                     self.positive_x_facing = False
                     self.attack_hitbox.rect.x -= self.attack_hitbox.rect.size[0]
                     updated_facing = True
-                elif (self.get_target_coord()[0] - self.hitbox.rect.x - self.hitbox.rect.size[0] // 2 > 0
+                elif (self.get_target_coord()[0] - self.position_on_map[0] > 0
                       and not self.positive_x_facing):
                     self.positive_x_facing = True
                     self.attack_hitbox.rect.x += self.attack_hitbox.rect.size[0]
@@ -443,7 +444,7 @@ class Player(Mob):
 
 class Projectile(Entity):
     def __init__(self, group, texture, coordinates, hitbox_rect, damage, knockback, shooter, max_speed=15,
-                 friction=0.01, collision=True):
+                 friction=0.0, collision=True):
         super().__init__(group, texture, coordinates, hitbox_rect, max_speed, collision, friction)
         self.damage = damage
         self.shooter = shooter
