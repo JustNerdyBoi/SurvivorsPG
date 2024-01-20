@@ -3,7 +3,7 @@ import pygame
 import core
 import generation
 
-FULLSCREEN = False
+FULLSCREEN = True
 STANDART_RESOLUTION = (2048, 1024)
 DEBUG = False
 FPS = 60  # changed for FPS
@@ -63,7 +63,7 @@ def loser_screen():
 
         screen.fill(BACKGROUND_COLOR)
         draw_text("Помер", MAIN_COLOR, screen, width // 2, height // 2 - 50)
-        draw_text(f"Ваш счет: {round(current_showing_score)}", MAIN_COLOR, screen, width // 2, height // 2)
+        draw_text(f"Твой счет: {round(current_showing_score)}", MAIN_COLOR, screen, width // 2, height // 2)
 
         start_button = pygame.Rect(width // 2 - 50, height // 2 + 50, 100, 50)
         start_button_rect = pygame.draw.rect(screen, MAIN_COLOR, start_button)

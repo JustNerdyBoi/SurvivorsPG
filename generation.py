@@ -195,9 +195,9 @@ def apply_sprites(rooms, field):
             if (tileposition[0] + room.coords[0], tileposition[1] + room.coords[1]) in room.lootpositions:
                 core.TileSprite(room.spritegroup, tile_textures['tile_0.png'], tile_coords[1] * SIZE_OF_TEXTURES,
                                 tile_coords[0] * SIZE_OF_TEXTURES)
-                core.TileSprite(room.spritegroup, tile_textures[f'tile_box_{random.randint(1, 4)}.png'],
-                                tile_coords[1] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 4,
-                                tile_coords[0] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 4)
+                # core.TileSprite(room.spritegroup, tile_textures[f'tile_box_0.png'],
+                # tile_coords[1] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 4,
+                # tile_coords[0] * SIZE_OF_TEXTURES + SIZE_OF_TEXTURES // 4)
 
             else:
                 if tile_type == 0:
