@@ -94,6 +94,18 @@ def load_animation(subdirectory, name, frame_amount, frame_delay):
     return AnimatedTexture(image_list, frame_delay)
 
 
+def cut_image(subdirectory, name, lenth, flipx=False, scale=1):
+    images = []
+    full_image = load_image(subdirectory, name)
+    for i in range(full_image.get_size()[0] // lenth):
+        current_image = full_image.subsurface(pygame.Rect((i * lenth, 0), (lenth, full_image.get_size()[1])))
+        if flipx:
+            current_image = pygame.transform.flip(current_image, True, False)
+        current_image = pygame.transform.scale(current_image, (lenth * scale, current_image.get_size()[1] * scale))
+        images.append(current_image)
+    return images
+
+
 class AnimatedTexture:
     def __init__(self, images_list, frame_time):
         self.images = images_list
@@ -109,7 +121,7 @@ class EntityGroup(pygame.sprite.Group):
     def tick_update(self, collision_group, tickrate):
         for entity in self:
             entity.update(collision_group, tickrate)
-            if type(entity) in (Mob, Player):
+            if issubclass(type(entity), Mob):
                 entity.animation_update()
 
 
@@ -254,17 +266,26 @@ class Entity(pygame.sprite.Sprite):
 
 
 class Mob(Entity):
-    def __init__(self, group, projectile_group, texture, coordinates,
+    def __init__(self, group, projectile_group, particle_group, texture, coordinates,
                  hitbox_rect, attack_hitbox_rect,
-                 idle_animation, movement_animation, aiming_animation, melee_animation, death_animation,
+                 idle_animation, movement_animation, aiming_animation, melee_animation, death_animation, hostile=False,
                  ranger_damage=0, projectile_image=False, knockback=100, inaccuracy=0, arrows_per_shot=1,
                  melee_damage=0, melee_attack_stages=False,
-                 max_speed=1,
-                 collision=True, friction=0.1, max_hp=100, regen=10):
+                 max_hp=100, regen=0, max_speed=1, friction=0.1,
+                 collision=True):
         super().__init__(group, texture, coordinates, hitbox_rect, max_speed, collision, friction)
+
         self.max_hp = max_hp
         self.hp = max_hp
         self.regen = regen
+        self.regen_clock = pygame.time.Clock()
+
+        self.particle_group = particle_group
+        self.health_bar = pygame.sprite.Sprite(particle_group)
+        self.health_bar_animation = AnimatedTexture(cut_image('combat', 'healthbar.png', 50), -1)
+        self.health_bar.image = self.health_bar_animation.images[0]
+        self.health_bar.rect = self.health_bar.image.get_rect()
+        self.health_bar_stage = 0
 
         hb_x_pos, hb_y_pos, hb_x_size, hb_y_size = attack_hitbox_rect
         self.attack_hitbox = Hitbox(pygame.Surface((hb_x_size, hb_y_size), pygame.SRCALPHA))
@@ -306,6 +327,31 @@ class Mob(Entity):
             self.melee_attack_stages = [self.melee_animation.max_frame]
 
         self.target_cord = [0, 0]
+        self.hostile = hostile
+
+    def update(self, collisiongroups, time_from_prev_frame):
+        super().update(collisiongroups, time_from_prev_frame)
+        healing = self.regen * self.regen_clock.tick() / 1000
+        if self.current_animation != self.death_animation and self.hp < self.max_hp:
+            if self.hp + healing < self.max_hp:
+                self.hp += healing
+            else:
+                self.hp = self.max_hp
+        self.health_bar.rect = (
+        self.position_on_map[0] - self.map_flipped[0] - self.health_bar.image.get_size()[0] // 2,
+        self.position_on_map[1] - self.map_flipped[1] + self.hitbox.rect.size[1] // 2 + 10)
+        current_healthbar_stage = round(9 -self.hp / self.max_hp * 9)
+        if self.health_bar_stage != current_healthbar_stage:
+            if self.hp == self.max_hp:
+                self.health_bar.image = self.health_bar_animation.images[0]
+                self.health_bar_stage = 0
+            elif self.hp > 0:
+                if current_healthbar_stage == 0:
+                    current_healthbar_stage = 1
+                self.health_bar.image = self.health_bar_animation.images[current_healthbar_stage]
+                self.health_bar_stage = current_healthbar_stage
+            else:
+                self.health_bar.image = self.health_bar_animation.images[10]
 
     def animation_update(self):
         self.facing_checking()
@@ -325,6 +371,10 @@ class Mob(Entity):
                 for _ in range(self.arrows_per_shot):
                     self.shot(self.get_target_coord(), self.projectile_image, self.inaccuracy)
 
+            elif self.current_animation == self.melee_animation and type(self) is not Player:
+                self.current_animation = self.idle_animation
+                self.current_animation_stage = 0
+
             elif self.current_animation == self.death_animation:
                 self.on_death()
                 self.kill()
@@ -336,10 +386,10 @@ class Mob(Entity):
             if (self.current_animation == self.melee_animation and
                     self.current_animation_stage in self.melee_attack_stages):
                 target_coords = self.get_target_coord()
-                projectile_angle = (180 / math.pi) * -math.atan2(target_coords[1] - self.position_on_map[1],
-                                                                 target_coords[0] - self.position_on_map[0])
-                self.impulse = [self.max_speed * 2 * math.sin(math.radians(projectile_angle + 90)) + self.speed_x,
-                                self.max_speed * 2 * math.cos(math.radians(projectile_angle + 90)) + self.speed_y]
+                hit_angle = (180 / math.pi) * -math.atan2(target_coords[1] - self.position_on_map[1],
+                                                          target_coords[0] - self.position_on_map[0])
+                self.impulse = [self.max_speed * 2 * math.sin(math.radians(hit_angle + 90)) + self.speed_x,
+                                self.max_speed * 2 * math.cos(math.radians(hit_angle + 90)) + self.speed_y]
 
                 self.melee_hit(self.groups()[0], self.melee_dmg)
 
@@ -406,7 +456,7 @@ class Mob(Entity):
 
     def melee_hit(self, group, damage):
         for hitted_entity in pygame.sprite.spritecollide(self.attack_hitbox, group, False):
-            if hitted_entity != self:
+            if self.hostile != hitted_entity.hostile:
                 hitted_entity.hp -= damage
 
                 hit_angle = (180 / math.pi) * -math.atan2(hitted_entity.position_on_map[1] - self.position_on_map[1],
@@ -420,15 +470,37 @@ class Mob(Entity):
         self.attack_hitbox.rect.x += x
         self.attack_hitbox.rect.y += y
 
+    def follow_target(self):
+        if self.current_animation != self.movement_animation:
+            self.current_animation = self.movement_animation
+        target_coords = self.get_target_coord()
+        angle = (180 / math.pi) * -math.atan2(target_coords[1] - self.position_on_map[1],
+                                              target_coords[0] - self.position_on_map[0])
+        self.acceleration_x = self.max_speed * math.sin(math.radians(angle + 90))
+        self.acceleration_y = self.max_speed * math.cos(math.radians(angle + 90))
+
     def on_death(self):
-        pass
+        self.health_bar.kill()
 
 
 class Player(Mob):
+    def __init__(self, entity_group, projectile_group, particle_group, coordinates):
+        super().__init__(entity_group, projectile_group, particle_group, load_image('player_sprites', 'idle_00.png'),
+                         coordinates,
+                         (17, 9, 14, 26), (25, -10, 60, 60),
+                         load_animation('player_sprites', 'idle', 3, 200),
+                         load_animation('player_sprites', 'run', 6, 70),
+                         load_animation('player_sprites', 'bow', 9, 120),
+                         load_animation('player_sprites', 'attack', 10, 100),
+                         load_animation('player_sprites', 'death', 7, 250),
+                         False, 50, False, 50, 0, 1,
+                         50, [1, 7], 100, 5)
+
     def get_target_coord(self):
         return pygame.mouse.get_pos()[0] + self.map_flipped[0], pygame.mouse.get_pos()[1] + self.map_flipped[1]
 
     def on_death(self):
+        super().on_death()
         self.loser = True
 
     def melee_hit(self, group, damage):
@@ -440,6 +512,57 @@ class Player(Mob):
             hitted_projectile.image = pygame.transform.rotate(hitted_projectile.image, 180)
             hitted_projectile.damage *= 2
             hitted_projectile.knockback *= 2
+
+
+class Goblin(Mob):
+    def __init__(self, entity_group, projectile_group, particle_group, coordinates):
+        super().__init__(entity_group, projectile_group, particle_group, load_image('mob_sprites', 'goblin.png'),
+                         coordinates,
+                         (15, 11, 17, 28), (24, 0, 50, 45),
+                         False,
+                         AnimatedTexture(cut_image('mob_sprites', 'goblin_walk.png', 48, True), 70),
+                         False,
+                         AnimatedTexture(cut_image('mob_sprites', 'goblin_attack.png', 48, True), 120),
+                         AnimatedTexture(cut_image('mob_sprites', 'goblin_death.png', 48, True), 300),
+                         True, 0, False, 0, 0, 0,
+                         25, [4],
+                         200, 2, 0.4, 0.2)
+
+
+class Slime(Mob):
+    def __init__(self, entity_group, projectile_group, particle_group, coordinates, splitness=2):
+        texture = load_image('mob_sprites', 'slime.png')
+        splitness += 1
+        if splitness > 1:
+            death_animation = AnimatedTexture(cut_image('mob_sprites', 'slime_split.png', 48, True, splitness), 120)
+        else:
+            death_animation = AnimatedTexture(cut_image('mob_sprites', 'slime_death.png', 48, True, splitness), 120)
+        super().__init__(entity_group, projectile_group, particle_group,
+                         pygame.transform.scale(pygame.transform.flip(texture, True, False),
+                                                (texture.get_size()[0] * splitness, texture.get_size()[1] * splitness)),
+                         coordinates,
+                         (16 * splitness, 25 * splitness, 16 * splitness, 13 * splitness),
+                         (24 * splitness, 10 * splitness, 30 * splitness, 35 * splitness),
+                         False,
+                         AnimatedTexture(cut_image('mob_sprites', 'slime_walk.png', 48, True, splitness), 120),
+                         False,
+                         AnimatedTexture(cut_image('mob_sprites', 'slime_attack.png', 48, True, splitness), 120),
+                         death_animation,
+                         True, 0, False, 0, 0, 0,
+                         5 * splitness, [5],
+                         25 * splitness, 2, 0.4, 0.1)
+        self.splitness = splitness - 1
+
+    def on_death(self):
+        super().on_death()
+        if self.splitness > 0:
+            child1 = Slime(self.groups()[0], self.projectile_group, self.particle_group, self.position_on_map,
+                           self.splitness - 1)
+            child2 = Slime(self.groups()[0], self.projectile_group, self.particle_group, self.position_on_map,
+                           self.splitness - 1)
+            child1.impulse = [random.uniform(-self.max_speed, self.max_speed) * 10,
+                              random.uniform(-self.max_speed, self.max_speed) * 10]
+            child2.impulse = [-child1.impulse[0], -child1.impulse[1]]
 
 
 class Projectile(Entity):
@@ -459,7 +582,7 @@ class Projectile(Entity):
     def update(self, collisiongroups, time_from_prev_frame):
         super().update(collisiongroups, time_from_prev_frame)
         for collided_entity in pygame.sprite.spritecollide(self, self.target_group, False):
-            if (collided_entity != self.shooter and (self.speed_x or self.speed_y)
+            if (collided_entity.hostile != self.shooter.hostile and (self.speed_x or self.speed_y)
                     and pygame.sprite.collide_rect(self, collided_entity.hitbox)):
                 collided_entity.hp -= self.damage
                 collided_entity.impulse = [self.speed_x * self.knockback / 100, self.speed_y * self.knockback / 100]

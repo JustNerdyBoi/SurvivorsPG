@@ -1,3 +1,4 @@
+import random
 import pygame
 import core
 import generation
@@ -76,26 +77,13 @@ def game_process():
 
     entity_group = core.EntityGroup()
     projectile_group = core.EntityGroup()
+    particle_group = pygame.sprite.Group()
 
-    player = core.Player(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (1, 1, True),
-                         (17, 9, 14, 26), (25, -10, 60, 60),
-                         core.load_animation('player_sprites', 'idle', 3, 200),
-                         core.load_animation('player_sprites', 'run', 6, 70),
-                         core.load_animation('player_sprites', 'bow', 9, 120),
-                         core.load_animation('player_sprites', 'attack', 10, 100),
-                         core.load_animation('player_sprites', 'death', 7, 250),
-                         50, False, 50, 0, 1,
-                         50, [1, 7])
-
-    dummy = core.Mob(entity_group, projectile_group, core.load_image('player_sprites', 'idle_00.png'), (1400, 160, True),
-                     (17, 9, 14, 26), (25, -10, 30, 60),
-                     core.load_animation('player_sprites', 'idle', 3, 200),
-                     core.load_animation('player_sprites', 'run', 6, 70),
-                     core.load_animation('player_sprites', 'bow', 9, 120),
-                     core.load_animation('player_sprites', 'attack', 10, 100),
-                     core.load_animation('player_sprites', 'death', 7, 250),
-                     30, False, 20, 0, 1,
-                     30, [1, 7])
+    player = core.Player(entity_group, projectile_group, particle_group, (1, 1, True))
+    for _ in range(1):
+        core.Slime(entity_group, projectile_group, particle_group, (random.randint(512, 1023), random.randint(512, 1023), True), 4)
+    for _ in range(1):
+        core.Goblin(entity_group, projectile_group, particle_group, (random.randint(512, 1023), random.randint(512, 1023), True))
 
     game_tickrate = pygame.time.Clock()
 
@@ -193,6 +181,7 @@ def game_process():
                     render_queue.append(roomneighbour)
 
         current_tickrate = game_tickrate.tick(FPS)
+
         entity_group.tick_update(render_queue, current_tickrate)
         projectile_group.tick_update(render_queue, current_tickrate)
 
@@ -210,6 +199,7 @@ def game_process():
 
         projectile_group.draw(screen)
         entity_group.draw(screen)
+        particle_group.draw(screen)
 
         for render_room in render_queue:
             render_room.upper_spritegroup.draw(screen)
@@ -218,12 +208,26 @@ def game_process():
             if current_room_pos not in render_room.covering_squares:
                 render_room.render_mist(screen, field_pos)
 
-        dummy.target_cord = player.position_on_map
-        if dummy.current_animation not in (dummy.aiming_animation, dummy.death_animation):
-            if pygame.math.Vector2(dummy.position_on_map).distance_to(player.position_on_map) > 200:
-                dummy.current_animation = dummy.aiming_animation
-            elif dummy.current_animation != dummy.melee_animation:
-                dummy.current_animation = dummy.melee_animation
+        for entity in entity_group:
+            if type(entity) is not core.Player:
+                distance_to_player = int(
+                    pygame.math.Vector2(entity.position_on_map).distance_to(player.position_on_map))
+                entity.target_cord = player.position_on_map
+                if entity.current_animation not in (entity.death_animation, entity.melee_animation) and type(
+                        entity) is core.Goblin:
+                    if distance_to_player < 45:
+                        entity.current_animation = entity.melee_animation
+                        entity.current_animation_stage = 0
+                    else:
+                        entity.follow_target()
+
+                elif entity.current_animation not in (entity.death_animation, entity.melee_animation) and type(
+                        entity) is core.Slime:
+                    if distance_to_player < 30 * (entity.splitness + 1):
+                        entity.current_animation = entity.melee_animation
+                        entity.current_animation_stage = 0
+                    else:
+                        entity.follow_target()
 
         prev_room_pos = current_room_pos
         pygame.display.flip()
