@@ -34,11 +34,11 @@ def menu():
 
         screen.fill(BACKGROUND_COLOR)
 
-        draw_text("Приветствую!", MAIN_COLOR, screen, width // 2, height // 2 - 50)
+        draw_text("Привет!", MAIN_COLOR, screen, width // 2, height // 2 - 50)
 
         start_button = pygame.Rect(width // 2 - 50, height // 2 + 50, 100, 50)
         start_button_rect = pygame.draw.rect(screen, MAIN_COLOR, start_button)
-        draw_text("Начать", BACKGROUND_COLOR, screen, width // 2, height // 2 + 75)
+        draw_text("Играть", BACKGROUND_COLOR, screen, width // 2, height // 2 + 75)
 
         pygame.display.flip()
 
@@ -47,6 +47,7 @@ def loser_screen():
     start_button = pygame.Rect(width // 2 - 50, height // 2 + 50, 100, 50)
     start_button_rect = pygame.draw.rect(screen, MAIN_COLOR, start_button)
     running_loser_screen = True
+    current_showing_score = 0
     while running_loser_screen:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -57,9 +58,12 @@ def loser_screen():
                 if start_button_rect.collidepoint(event.pos):
                     running_loser_screen = False
 
-        screen.fill(BACKGROUND_COLOR)
+        if current_showing_score < score:
+            current_showing_score += score / 2000
 
-        draw_text("Вы проиграли", MAIN_COLOR, screen, width // 2, height // 2 - 50)
+        screen.fill(BACKGROUND_COLOR)
+        draw_text("Помер", MAIN_COLOR, screen, width // 2, height // 2 - 50)
+        draw_text(f"Ваш счет: {round(current_showing_score)}", MAIN_COLOR, screen, width // 2, height // 2)
 
         start_button = pygame.Rect(width // 2 - 50, height // 2 + 50, 100, 50)
         start_button_rect = pygame.draw.rect(screen, MAIN_COLOR, start_button)
@@ -79,14 +83,11 @@ def game_process():
     projectile_group = core.EntityGroup()
     particle_group = pygame.sprite.Group()
 
-    player = core.Player(entity_group, projectile_group, particle_group, (1, 1, True))
-    for _ in range(1):
-        core.Slime(entity_group, projectile_group, particle_group, (random.randint(512, 1023), random.randint(512, 1023), True), 4)
-    for _ in range(1):
-        core.Goblin(entity_group, projectile_group, particle_group, (random.randint(512, 1023), random.randint(512, 1023), True))
+    player = core.Player(entity_group, projectile_group, particle_group, (1, 1, [0, 0], True))
 
     game_tickrate = pygame.time.Clock()
 
+    visited_room_list = []
     prev_room_pos = (0, 0)
     prev_room = []
     field_pos = [0, 0]
@@ -173,6 +174,24 @@ def game_process():
             current_room = render_queue[0]
             if current_room != prev_room:
                 projectile_group.empty()
+                if not visited_room_list:
+                    visited_room_list.append(current_room)
+                if current_room not in visited_room_list:
+                    visited_room_list.append(current_room)
+                    size_of_room = generation.SIZE_OF_ROOM * generation.SIZE_OF_TEXTURES
+                    for room_pos in current_room.covering_squares:
+                        room_coord_x = room_pos[1] * size_of_room
+                        room_coord_y = room_pos[0] * size_of_room
+                        for _ in range(random.randint(1, 3)):
+                            core.Slime(entity_group, projectile_group, particle_group,
+                                       (room_coord_x, room_coord_y, player.map_flipped.copy(), True),
+                                       random.randint(0, 3))
+                        for _ in range(random.randint(0, 1)):
+                            core.Goblin(entity_group, projectile_group, particle_group,
+                                        (room_coord_x, room_coord_y, player.map_flipped.copy(), True))
+                        for _ in range(random.randint(1, 3)):
+                            core.Bee(entity_group, projectile_group, particle_group,
+                                     (room_coord_x, room_coord_y, player.map_flipped.copy(), True))
             prev_room = current_room
 
             neighbours_pos = current_room.roomneighbours
@@ -209,31 +228,45 @@ def game_process():
                 render_room.render_mist(screen, field_pos)
 
         for entity in entity_group:
-            if type(entity) is not core.Player:
+            if type(entity) is not core.Player and entity.current_animation not in (
+                    entity.death_animation, entity.melee_animation):
                 distance_to_player = int(
                     pygame.math.Vector2(entity.position_on_map).distance_to(player.position_on_map))
                 entity.target_cord = player.position_on_map
-                if entity.current_animation not in (entity.death_animation, entity.melee_animation) and type(
-                        entity) is core.Goblin:
+                if type(entity) is core.Goblin:
                     if distance_to_player < 45:
                         entity.current_animation = entity.melee_animation
                         entity.current_animation_stage = 0
                     else:
                         entity.follow_target()
 
-                elif entity.current_animation not in (entity.death_animation, entity.melee_animation) and type(
-                        entity) is core.Slime:
+                elif type(entity) is core.Slime:
                     if distance_to_player < 30 * (entity.splitness + 1):
                         entity.current_animation = entity.melee_animation
                         entity.current_animation_stage = 0
                     else:
                         entity.follow_target()
+                elif type(entity) is core.Bee:
+                    if 200 < distance_to_player < 250:
+                        entity.follow_target(-1)
+                    elif 20 < distance_to_player < 200:
+                        entity.follow_target()
+                    elif distance_to_player < 20:
+                        entity.melee_hit(entity.groups()[0], entity.melee_dmg)
+                        entity.hp = 0
+                        entity.current_animation = entity.death_animation
+                        entity.current_animation_stage = 0
+                    elif entity.current_animation != entity.aiming_animation:
+                        entity.current_animation = entity.aiming_animation
+                        entity.current_animation_stage = 0
 
         prev_room_pos = current_room_pos
         pygame.display.flip()
 
         if player.loser:
-            running = False
+            for room in visited_room_list[1:]:
+                player.score += len(room.covering_squares) * 100
+            return player.score
 
 
 if FULLSCREEN:
@@ -251,7 +284,7 @@ main_process = True
 while main_process:
     menu()
     if main_process:
-        game_process()
+        score = game_process()
         if main_process:
             loser_screen()
 pygame.quit()
